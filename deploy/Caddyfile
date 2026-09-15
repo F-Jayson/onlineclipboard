@@ -1,0 +1,6 @@
+{$CLIP_DOMAIN} {
+    encode zstd gzip
+    reverse_proxy api:8080
+    # Access logging is intentionally not enabled: future snapshot URLs contain
+    # short-lived tokens. Add only a reviewed, redacted log format in production.
+}

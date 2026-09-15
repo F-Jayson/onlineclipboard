@@ -1,0 +1,1573 @@
+openapi: 3.0.3
+info:
+  title: OnlineClipboard API
+  version: 0.1.0-design
+  description: 设计契约。除健康检查、就绪检查和 server-info 外均未实现；当前业务路由返回 501。
+servers:
+- url: https://clip.example.com
+  description: 替换为用户的服务器 HTTPS origin
+security:
+- bearerAuth: []
+paths:
+  /healthz:
+    get:
+      operationId: health
+      summary: 进程存活
+      x-implementation: skeleton
+      responses:
+        '200':
+          description: 进程存活
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Health'
+        default:
+          description: 统一错误体；参见 docs/06-api.md
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security: []
+  /readyz:
+    get:
+      operationId: ready
+      summary: 业务就绪（当前固定 503）
+      x-implementation: skeleton
+      responses:
+        '200':
+          description: 业务就绪（当前固定 503）
+        default:
+          description: 统一错误体；参见 docs/06-api.md
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '503':
+          description: 具体业务错误码见接口设计
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security: []
+  /api/v1/server-info:
+    get:
+      operationId: serverInfo
+      summary: 服务能力发现
+      x-implementation: skeleton
+      responses:
+        '200':
+          description: 服务能力发现
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServerInfo'
+        default:
+          description: 统一错误体；参见 docs/06-api.md
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security: []
+  /api/v1/auth/register:
+    post:
+      operationId: register
+      summary: 邀请注册与初始设备会话
+      x-implementation: planned
+      responses:
+        '201':
+          description: 邀请注册与初始设备会话
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResult'
+        default:
+          description: 统一错误体；参见 docs/06-api.md
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '501':
+          description: 当前骨架尚未实现此业务
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '400':
+          description: 具体业务错误码见接口设计
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: 具体业务错误码见接口设计
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: 具体业务错误码见接口设计
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: 具体业务错误码见接口设计
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+  /api/v1/auth/login:
+    post:
+      operationId: login
+      summary: 密码登录
+      x-implementation: planned
+      responses:
+        '200':
+          description: 密码登录
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResult'
+        default:
+          description: 统一错误体；参见 docs/06-api.md
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '501':
+          description: 当前骨架尚未实现此业务
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: 具体业务错误码见接口设计
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: 具体业务错误码见接口设计
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+  /api/v1/auth/refresh:
+    post:
+      operationId: refresh
+      summary: 刷新并轮换令牌
+      x-implementation: planned
+      responses:
+        '200':
+          description: 刷新并轮换令牌
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenPair'
+        default:
+          description: 统一错误体；参见 docs/06-api.md
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '501':
+          description: 当前骨架尚未实现此业务
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: 具体业务错误码见接口设计
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: 具体业务错误码见接口设计
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshRequest'
+  /api/v1/auth/logout:
+    post:
+      operationId: logout
+      summary: 撤销当前会话
+      x-implementation: planned
+      responses:
+        '204':
+          description: 撤销当前会话
+        default:
+          description: 统一错误体；参见 docs/06-api.md
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '501':
+          description: 当前骨架尚未实现此业务
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/v1/auth/password:
+    post:
+      operationId: changePassword
+      summary: 修改密码并撤销全部会话
+      x-implementation: planned
+      responses:
+        '204':
+          description: 修改密码并撤销全部会话
+        default:
+          description: 统一错误体；参见 docs/06-api.md
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '501':
+          description: 当前骨架尚未实现此业务
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PasswordChange'
+  /api/v1/devices:
+    get:
+      operationId: listDevices
+      summary: 列出账号设备
+      x-implementation: planned
+      responses:
+        '200':
+          description: 列出账号设备
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DevicePage'
+        default:
+          description: 统一错误体；参见 docs/06-api.md
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '501':
+          description: 当前骨架尚未实现此业务
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/v1/devices/{id}:
+    delete:
+      operationId: revokeDevice
+      summary: 撤销设备
+      x-implementation: planned
+      responses:
+        '204':
+          description: 撤销设备
+        default:
+          description: 统一错误体；参见 docs/06-api.md
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '501':
+          description: 当前骨架尚未实现此业务
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      parameters:
+      - $ref: '#/components/parameters/DeviceId'
+  /api/v1/vault:
+    get:
+      operationId: getVault
+      summary: 获取账号保险库信封
+      x-implementation: planned
+      responses:
+        '200':
+          description: 获取账号保险库信封
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VaultEnvelope'
+        default:
+          description: 统一错误体；参见 docs/06-api.md
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '501':
+          description: 当前骨架尚未实现此业务
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: 具体业务错误码见接口设计
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    put:
+      operationId: initializeVault
+      summary: 仅首次初始化保险库
+      x-implementation: planned
+      responses:
+        '201':
+          description: 仅首次初始化保险库
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VaultEnvelope'
+        default:
+          description: 统一错误体；参见 docs/06-api.md
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '501':
+          description: 当前骨架尚未实现此业务
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '412':
+          description: 具体业务错误码见接口设计
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '428':
+          description: 具体业务错误码见接口设计
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VaultEnvelope'
+      parameters:
+      - $ref: '#/components/parameters/IfNoneMatch'
+  /api/v1/clips:
+    post:
+      operationId: createClip
+      summary: 幂等创建密文条目
+      x-implementation: planned
+      responses:
+        '201':
+          description: 幂等创建密文条目
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MutationReceipt'
+        default:
+          description: 统一错误体；参见 docs/06-api.md
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '501':
+          description: 当前骨架尚未实现此业务
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: 具体业务错误码见接口设计
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '413':
+          description: 具体业务错误码见接口设计
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: 具体业务错误码见接口设计
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '200':
+          description: 相同请求的原始创建收据，不代表当前状态
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MutationReceipt'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateClip'
+    get:
+      operationId: listClips
+      summary: 分页历史或回收站；正文搜索在客户端
+      x-implementation: planned
+      responses:
+        '200':
+          description: 分页历史或回收站；正文搜索在客户端
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClipPage'
+        default:
+          description: 统一错误体；参见 docs/06-api.md
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '501':
+          description: 当前骨架尚未实现此业务
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      parameters:
+      - $ref: '#/components/parameters/Limit'
+      - $ref: '#/components/parameters/PageToken'
+      - name: status
+        in: query
+        schema:
+          type: string
+          enum:
+          - active
+          - trash
+          default: active
+      - name: source_device_id
+        in: query
+        schema:
+          type: string
+          format: uuid
+      - name: since
+        in: query
+        schema:
+          type: string
+          format: date-time
+      - name: until
+        in: query
+        schema:
+          type: string
+          format: date-time
+  /api/v1/clips/{id}:
+    get:
+      operationId: getClip
+      summary: 当前条目或墓碑
+      x-implementation: planned
+      responses:
+        '200':
+          description: 当前条目或墓碑
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Clip'
+          headers:
+            ETag:
+              description: 带双引号的条目版本
+              schema:
+                type: string
+        default:
+          description: 统一错误体；参见 docs/06-api.md
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '501':
+          description: 当前骨架尚未实现此业务
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: 具体业务错误码见接口设计
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '410':
+          description: 具体业务错误码见接口设计
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      parameters:
+      - $ref: '#/components/parameters/ClipId'
+    delete:
+      operationId: trashClip
+      summary: 移入回收站
+      x-implementation: planned
+      responses:
+        '200':
+          description: 移入回收站
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MutationReceipt'
+        default:
+          description: 统一错误体；参见 docs/06-api.md
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '501':
+          description: 当前骨架尚未实现此业务
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: 具体业务错误码见接口设计
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: 具体业务错误码见接口设计
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '410':
+          description: 具体业务错误码见接口设计
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '412':
+          description: 具体业务错误码见接口设计
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '428':
+          description: 具体业务错误码见接口设计
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      parameters:
+      - $ref: '#/components/parameters/ClipId'
+      - $ref: '#/components/parameters/IfMatch'
+      - $ref: '#/components/parameters/IdempotencyKey'
+  /api/v1/clips/{id}/restore:
+    post:
+      operationId: restoreClip
+      summary: 到期前恢复
+      x-implementation: planned
+      responses:
+        '200':
+          description: 到期前恢复
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MutationReceipt'
+        default:
+          description: 统一错误体；参见 docs/06-api.md
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '501':
+          description: 当前骨架尚未实现此业务
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: 具体业务错误码见接口设计
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: 具体业务错误码见接口设计
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '410':
+          description: 具体业务错误码见接口设计
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '412':
+          description: 具体业务错误码见接口设计
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '428':
+          description: 具体业务错误码见接口设计
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      parameters:
+      - $ref: '#/components/parameters/ClipId'
+      - $ref: '#/components/parameters/IfMatch'
+      - $ref: '#/components/parameters/IdempotencyKey'
+  /api/v1/clips/{id}/permanent:
+    delete:
+      operationId: purgeClip
+      summary: 永久删除回收站条目
+      x-implementation: planned
+      responses:
+        '200':
+          description: 永久删除回收站条目
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MutationReceipt'
+        default:
+          description: 统一错误体；参见 docs/06-api.md
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '501':
+          description: 当前骨架尚未实现此业务
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: 具体业务错误码见接口设计
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: 具体业务错误码见接口设计
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '410':
+          description: 具体业务错误码见接口设计
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '412':
+          description: 具体业务错误码见接口设计
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '428':
+          description: 具体业务错误码见接口设计
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      parameters:
+      - $ref: '#/components/parameters/ClipId'
+      - $ref: '#/components/parameters/IfMatch'
+      - $ref: '#/components/parameters/IdempotencyKey'
+  /api/v1/sync/changes:
+    get:
+      operationId: getChanges
+      summary: 按账号游标拉取变化
+      x-implementation: planned
+      responses:
+        '200':
+          description: 按账号游标拉取变化
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChangePage'
+        default:
+          description: 统一错误体；参见 docs/06-api.md
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '501':
+          description: 当前骨架尚未实现此业务
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: 具体业务错误码见接口设计
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '410':
+          description: 具体业务错误码见接口设计
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      parameters:
+      - $ref: '#/components/parameters/Limit'
+      - name: epoch
+        in: query
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: after
+        in: query
+        required: true
+        schema:
+          type: string
+          pattern: ^(0|[1-9][0-9]*)$
+  /api/v1/sync/snapshots:
+    post:
+      operationId: beginSnapshot
+      summary: 开始有边界的收敛扫描
+      x-implementation: planned
+      responses:
+        '201':
+          description: 开始有边界的收敛扫描
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Snapshot'
+        default:
+          description: 统一错误体；参见 docs/06-api.md
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '501':
+          description: 当前骨架尚未实现此业务
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/v1/sync/snapshots/{token}:
+    get:
+      operationId: getSnapshotPage
+      summary: 扫描当前可见条目
+      x-implementation: planned
+      responses:
+        '200':
+          description: 扫描当前可见条目
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SnapshotPage'
+        default:
+          description: 统一错误体；参见 docs/06-api.md
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '501':
+          description: 当前骨架尚未实现此业务
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: 具体业务错误码见接口设计
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '410':
+          description: 具体业务错误码见接口设计
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      parameters:
+      - $ref: '#/components/parameters/SnapshotToken'
+      - $ref: '#/components/parameters/Limit'
+      - $ref: '#/components/parameters/PageToken'
+  /api/v1/sync/ws:
+    get:
+      operationId: subscribeChanges
+      summary: WebSocket 变化提醒；帧见 ChangeHint
+      x-implementation: planned
+      responses:
+        '101':
+          description: WebSocket 变化提醒；帧见 ChangeHint
+        default:
+          description: 统一错误体；参见 docs/06-api.md
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '501':
+          description: 当前骨架尚未实现此业务
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: 具体业务错误码见接口设计
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: 具体业务错误码见接口设计
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      description: 原生客户端使用 Authorization 头。只发变化提示，不承载正文或可靠历史。访问令牌过期后重新认证连接。
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      description: 不透明随机访问令牌，不是 JWT
+  parameters:
+    ClipId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    DeviceId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    SnapshotToken:
+      name: token
+      in: path
+      required: true
+      schema:
+        type: string
+        pattern: ^[A-Za-z0-9_-]+$
+        minLength: 43
+        maxLength: 43
+    Limit:
+      name: limit
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 200
+        default: 100
+    PageToken:
+      name: page_token
+      in: query
+      schema:
+        type: string
+        maxLength: 2048
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      schema:
+        type: string
+        format: uuid
+    IfMatch:
+      name: If-Match
+      in: header
+      required: true
+      schema:
+        type: string
+        pattern: ^"[1-9][0-9]*"$
+    IfNoneMatch:
+      name: If-None-Match
+      in: header
+      required: true
+      schema:
+        type: string
+        enum:
+        - '*'
+  schemas:
+    Error:
+      type: object
+      additionalProperties: false
+      required:
+      - error
+      properties:
+        error:
+          type: object
+          additionalProperties: false
+          required:
+          - code
+          - message
+          - request_id
+          properties:
+            code:
+              type: string
+            message:
+              type: string
+            request_id:
+              type: string
+            details:
+              type: object
+              additionalProperties: false
+              properties:
+                id:
+                  type: string
+                  format: uuid
+                status:
+                  type: string
+                  enum:
+                  - active
+                  - trash
+                  - purged
+                version:
+                  type: integer
+                  minimum: 1
+                seq:
+                  type: string
+                  pattern: ^(0|[1-9][0-9]*)$
+                expires_at:
+                  type: string
+                  format: date-time
+                sync_epoch:
+                  type: string
+                  format: uuid
+                min_available_seq:
+                  type: string
+                  pattern: ^[1-9][0-9]*$
+    Health:
+      type: object
+      additionalProperties: false
+      required:
+      - status
+      - stage
+      properties:
+        status:
+          type: string
+          enum:
+          - ok
+        stage:
+          type: string
+          enum:
+          - skeleton
+          - ready
+    ServerInfo:
+      type: object
+      additionalProperties: false
+      required:
+      - name
+      - version
+      - stage
+      - protocol_version
+      - sync_available
+      - e2ee_available
+      - registration_mode
+      - max_text_bytes
+      - max_request_bytes
+      - trash_retention_seconds
+      properties:
+        name:
+          type: string
+        version:
+          type: string
+        stage:
+          type: string
+          enum:
+          - skeleton
+          - ready
+        protocol_version:
+          type: integer
+          enum:
+          - 1
+        sync_available:
+          type: boolean
+        e2ee_available:
+          type: boolean
+        registration_mode:
+          type: string
+          enum:
+          - disabled
+          - invite
+          - open
+        max_text_bytes:
+          type: integer
+          example: 65536
+        max_request_bytes:
+          type: integer
+          example: 131072
+        trash_retention_seconds:
+          type: integer
+          enum:
+          - 604800
+    DeviceInput:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - name
+      - platform
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          minLength: 1
+          maxLength: 64
+        platform:
+          type: string
+          enum:
+          - windows
+          - android
+    LoginRequest:
+      type: object
+      additionalProperties: false
+      required:
+      - username
+      - password
+      - device
+      properties:
+        username:
+          type: string
+          pattern: ^[a-z0-9_]{3,32}$
+        password:
+          type: string
+          minLength: 12
+          maxLength: 128
+          format: password
+        device:
+          $ref: '#/components/schemas/DeviceInput'
+    RegisterRequest:
+      type: object
+      additionalProperties: false
+      required:
+      - username
+      - password
+      - device
+      - invite_token
+      properties:
+        username:
+          type: string
+          pattern: ^[a-z0-9_]{3,32}$
+        password:
+          type: string
+          minLength: 12
+          maxLength: 128
+          format: password
+        device:
+          $ref: '#/components/schemas/DeviceInput'
+        invite_token:
+          type: string
+          minLength: 1
+          maxLength: 256
+    TokenPair:
+      type: object
+      additionalProperties: false
+      required:
+      - access_token
+      - refresh_token
+      - token_type
+      - expires_in
+      - refresh_expires_at
+      properties:
+        access_token:
+          type: string
+          pattern: ^[A-Za-z0-9_-]+$
+          minLength: 43
+          maxLength: 43
+        refresh_token:
+          type: string
+          pattern: ^[A-Za-z0-9_-]+$
+          minLength: 43
+          maxLength: 43
+        token_type:
+          type: string
+          enum:
+          - Bearer
+        expires_in:
+          type: integer
+          example: 900
+        refresh_expires_at:
+          type: string
+          format: date-time
+    AuthResult:
+      type: object
+      additionalProperties: false
+      required:
+      - access_token
+      - refresh_token
+      - token_type
+      - expires_in
+      - refresh_expires_at
+      - user_id
+      - device_id
+      - vault_initialized
+      properties:
+        access_token:
+          type: string
+          pattern: ^[A-Za-z0-9_-]+$
+          minLength: 43
+          maxLength: 43
+        refresh_token:
+          type: string
+          pattern: ^[A-Za-z0-9_-]+$
+          minLength: 43
+          maxLength: 43
+        token_type:
+          type: string
+          enum:
+          - Bearer
+        expires_in:
+          type: integer
+          example: 900
+        refresh_expires_at:
+          type: string
+          format: date-time
+        user_id:
+          type: string
+          format: uuid
+        device_id:
+          type: string
+          format: uuid
+        vault_initialized:
+          type: boolean
+    RefreshRequest:
+      type: object
+      additionalProperties: false
+      required:
+      - refresh_token
+      properties:
+        refresh_token:
+          type: string
+          pattern: ^[A-Za-z0-9_-]+$
+          minLength: 43
+          maxLength: 43
+    PasswordChange:
+      type: object
+      additionalProperties: false
+      required:
+      - current_password
+      - new_password
+      properties:
+        current_password:
+          type: string
+          format: password
+          minLength: 12
+          maxLength: 128
+        new_password:
+          type: string
+          format: password
+          minLength: 12
+          maxLength: 128
+    Device:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - name
+      - platform
+      - created_at
+      - last_seen_at
+      - revoked_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        platform:
+          type: string
+          enum:
+          - windows
+          - android
+        created_at:
+          type: string
+          format: date-time
+        last_seen_at:
+          type: string
+          format: date-time
+          nullable: true
+        revoked_at:
+          type: string
+          format: date-time
+          nullable: true
+    DevicePage:
+      type: object
+      additionalProperties: false
+      required:
+      - items
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Device'
+    VaultEnvelope:
+      type: object
+      additionalProperties: false
+      required:
+      - vault_id
+      - format_version
+      - key_epoch
+      - wrap_salt
+      - wrap_nonce
+      - wrapped_key
+      properties:
+        vault_id:
+          type: string
+          format: uuid
+        format_version:
+          type: integer
+          enum:
+          - 1
+        key_epoch:
+          type: integer
+          enum:
+          - 1
+        wrap_salt:
+          type: string
+          pattern: ^[A-Za-z0-9_-]+$
+          minLength: 43
+          maxLength: 43
+        wrap_nonce:
+          type: string
+          pattern: ^[A-Za-z0-9_-]+$
+          minLength: 16
+          maxLength: 16
+        wrapped_key:
+          type: string
+          pattern: ^[A-Za-z0-9_-]+$
+          minLength: 64
+          maxLength: 64
+    CreateClip:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - vault_id
+      - source_device_id
+      - format_version
+      - key_epoch
+      - content_type
+      - nonce
+      - ciphertext
+      - delivery_intent
+      properties:
+        id:
+          type: string
+          format: uuid
+        vault_id:
+          type: string
+          format: uuid
+        source_device_id:
+          type: string
+          format: uuid
+        format_version:
+          type: integer
+          enum:
+          - 1
+        key_epoch:
+          type: integer
+          enum:
+          - 1
+        content_type:
+          type: string
+          enum:
+          - text/plain
+        nonce:
+          type: string
+          pattern: ^[A-Za-z0-9_-]+$
+          minLength: 16
+          maxLength: 16
+        ciphertext:
+          type: string
+          pattern: ^[A-Za-z0-9_-]+$
+          minLength: 23
+          maxLength: 87403
+        delivery_intent:
+          type: string
+          enum:
+          - live
+          - history_only
+    Clip:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - vault_id
+      - source_device_id
+      - format_version
+      - key_epoch
+      - content_type
+      - nonce
+      - ciphertext
+      - delivery_intent
+      - status
+      - version
+      - created_seq
+      - last_seq
+      - created_at
+      - deleted_at
+      - expires_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        vault_id:
+          type: string
+          format: uuid
+        source_device_id:
+          type: string
+          format: uuid
+        format_version:
+          type: integer
+          enum:
+          - 1
+        key_epoch:
+          type: integer
+          enum:
+          - 1
+        content_type:
+          type: string
+          enum:
+          - text/plain
+        nonce:
+          type: string
+          pattern: ^[A-Za-z0-9_-]+$
+          minLength: 16
+          maxLength: 16
+        ciphertext:
+          type: string
+          pattern: ^[A-Za-z0-9_-]+$
+          minLength: 23
+          maxLength: 87403
+        delivery_intent:
+          type: string
+          enum:
+          - live
+          - history_only
+        status:
+          type: string
+          enum:
+          - active
+          - trash
+        version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        created_seq:
+          type: string
+          pattern: ^(0|[1-9][0-9]*)$
+        last_seq:
+          type: string
+          pattern: ^(0|[1-9][0-9]*)$
+        created_at:
+          type: string
+          format: date-time
+        deleted_at:
+          type: string
+          format: date-time
+          nullable: true
+        expires_at:
+          type: string
+          format: date-time
+          nullable: true
+    ClipPage:
+      type: object
+      additionalProperties: false
+      required:
+      - items
+      - next_page_token
+      - server_time
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Clip'
+        next_page_token:
+          type: string
+          nullable: true
+        server_time:
+          type: string
+          format: date-time
+    MutationReceipt:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - status
+      - version
+      - seq
+      properties:
+        id:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum:
+          - active
+          - trash
+          - purged
+        version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        seq:
+          type: string
+          pattern: ^(0|[1-9][0-9]*)$
+        created_at:
+          type: string
+          format: date-time
+        deleted_at:
+          type: string
+          format: date-time
+          nullable: true
+        expires_at:
+          type: string
+          format: date-time
+          nullable: true
+    Change:
+      type: object
+      additionalProperties: false
+      required:
+      - seq
+      - clip_id
+      - kind
+      - version
+      - occurred_at
+      properties:
+        seq:
+          type: string
+          pattern: ^(0|[1-9][0-9]*)$
+        clip_id:
+          type: string
+          format: uuid
+        kind:
+          type: string
+          enum:
+          - clip.created
+          - clip.trashed
+          - clip.restored
+          - clip.purged
+        version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        occurred_at:
+          type: string
+          format: date-time
+    ChangePage:
+      type: object
+      additionalProperties: false
+      required:
+      - sync_epoch
+      - events
+      - next_seq
+      - high_watermark
+      - has_more
+      - server_time
+      properties:
+        sync_epoch:
+          type: string
+          format: uuid
+        events:
+          type: array
+          items:
+            $ref: '#/components/schemas/Change'
+        next_seq:
+          type: string
+          pattern: ^(0|[1-9][0-9]*)$
+        high_watermark:
+          type: string
+          pattern: ^(0|[1-9][0-9]*)$
+        has_more:
+          type: boolean
+        server_time:
+          type: string
+          format: date-time
+    Snapshot:
+      type: object
+      additionalProperties: false
+      required:
+      - token
+      - base_seq
+      - sync_epoch
+      - expires_at
+      properties:
+        token:
+          type: string
+          pattern: ^[A-Za-z0-9_-]+$
+          minLength: 43
+          maxLength: 43
+        base_seq:
+          type: string
+          pattern: ^(0|[1-9][0-9]*)$
+        sync_epoch:
+          type: string
+          format: uuid
+        expires_at:
+          type: string
+          format: date-time
+    SnapshotPage:
+      type: object
+      additionalProperties: false
+      required:
+      - base_seq
+      - sync_epoch
+      - items
+      - next_page_token
+      - server_time
+      properties:
+        base_seq:
+          type: string
+          pattern: ^(0|[1-9][0-9]*)$
+        sync_epoch:
+          type: string
+          format: uuid
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Clip'
+        next_page_token:
+          type: string
+          nullable: true
+        server_time:
+          type: string
+          format: date-time
+    ChangeHint:
+      type: object
+      additionalProperties: false
+      required:
+      - type
+      - sync_epoch
+      - high_watermark
+      properties:
+        type:
+          type: string
+          enum:
+          - changes_available
+        sync_epoch:
+          type: string
+          format: uuid
+        high_watermark:
+          type: string
+          pattern: ^(0|[1-9][0-9]*)$

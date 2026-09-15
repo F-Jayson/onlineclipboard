@@ -1,0 +1,70 @@
+{
+  "warning": "PUBLIC FIXED TEST MATERIAL ONLY. Never use these keys/nonces in production.",
+  "format_version": 1,
+  "user_id": "11111111-1111-4111-8111-111111111111",
+  "cmk_hex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+  "recovery_key_hex": "202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f",
+  "recovery_code": "oc1_ICEiIyQlJicoKSorLC0uLzAxMjM0NTY3ODk6Ozw9Pj8",
+  "wrap_key_hex": "3470a29e486aca4d26030cc9b0d69bdaca3d2a7600b9459127a1daeb26380346",
+  "vault_envelope": {
+    "vault_id": "22222222-2222-4222-8222-222222222222",
+    "format_version": 1,
+    "key_epoch": 1,
+    "wrap_salt": "QEFCQ0RFRkdISUpLTE1OT1BRUlNUVVZXWFlaW1xdXl8",
+    "wrap_nonce": "AAECAwQFBgcICQoL",
+    "wrapped_key": "5RsjEfiN_0VUvjvfJPwgQzO7rLLU78BoVNCGv51qaN0CM6LeU1FQRmBTUZgtsQ6e"
+  },
+  "items": [
+    {
+      "plaintext": "Hello, clipboard!",
+      "plaintext_utf8_hex": "48656c6c6f2c20636c6970626f61726421",
+      "item_key_hex": "7966e6d51bd52d3e98da462d572fcf20b835d7c5b14c5fbe1e57d3a2394a16b1",
+      "aad_utf8": "oc-v1|clip|11111111-1111-4111-8111-111111111111|22222222-2222-4222-8222-222222222222|44444444-4444-4444-8444-000000000001|55555555-5555-4555-8555-555555555555|1|text/plain",
+      "envelope": {
+        "id": "44444444-4444-4444-8444-000000000001",
+        "vault_id": "22222222-2222-4222-8222-222222222222",
+        "source_device_id": "55555555-5555-4555-8555-555555555555",
+        "format_version": 1,
+        "key_epoch": 1,
+        "content_type": "text/plain",
+        "nonce": "DA0ODxAREhMUFRYX",
+        "ciphertext": "xd3WtnWLjmWtRC_-SWeDVvSyWaGnFES86xUrPgB6bnBF",
+        "delivery_intent": "history_only"
+      }
+    },
+    {
+      "plaintext": "你好，云剪贴板 📋\r\n  Keep spaces.\n",
+      "plaintext_utf8_hex": "e4bda0e5a5bdefbc8ce4ba91e589aae8b4b4e69dbf20f09f938b0d0a20204b656570207370616365732e0a",
+      "item_key_hex": "ddcd34fe250a480dc31adf84cd76dc6d68bbaee07d5c66ee3a10391236f7089c",
+      "aad_utf8": "oc-v1|clip|11111111-1111-4111-8111-111111111111|22222222-2222-4222-8222-222222222222|44444444-4444-4444-8444-000000000002|55555555-5555-4555-8555-555555555555|1|text/plain",
+      "envelope": {
+        "id": "44444444-4444-4444-8444-000000000002",
+        "vault_id": "22222222-2222-4222-8222-222222222222",
+        "source_device_id": "55555555-5555-4555-8555-555555555555",
+        "format_version": 1,
+        "key_epoch": 1,
+        "content_type": "text/plain",
+        "nonce": "GBkaGxwdHh8gISIj",
+        "ciphertext": "gSh9cIC9WJ8v-0Ch61vcRnk31x-t9NNe-zDIiHwNlq6o7cMd_oANSW36Kdo54bmzsQVD7DCzbjpDY9M",
+        "delivery_intent": "history_only"
+      }
+    },
+    {
+      "plaintext": " \n\t",
+      "plaintext_utf8_hex": "200a09",
+      "item_key_hex": "32319326dce0b085c467e485ad3dccd9cd7d8e57ad2bca4651838740a88838ad",
+      "aad_utf8": "oc-v1|clip|11111111-1111-4111-8111-111111111111|22222222-2222-4222-8222-222222222222|44444444-4444-4444-8444-000000000003|55555555-5555-4555-8555-555555555555|1|text/plain",
+      "envelope": {
+        "id": "44444444-4444-4444-8444-000000000003",
+        "vault_id": "22222222-2222-4222-8222-222222222222",
+        "source_device_id": "55555555-5555-4555-8555-555555555555",
+        "format_version": 1,
+        "key_epoch": 1,
+        "content_type": "text/plain",
+        "nonce": "JCUmJygpKissLS4v",
+        "ciphertext": "pmej0hRhposIaZ0fiLxIdEuyMA",
+        "delivery_intent": "history_only"
+      }
+    }
+  ]
+}

@@ -1,0 +1,57 @@
+name: onlineclipboard
+
+services:
+  api:
+    build:
+      context: ../server
+    environment:
+      CLIP_HTTP_ADDR: 0.0.0.0:8080
+    ports:
+      - "127.0.0.1:8080:8080"
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped
+
+  # Prepared database only: the skeleton does not connect or apply migrations.
+  postgres:
+    image: postgres:17-alpine
+    profiles: [infrastructure]
+    environment:
+      POSTGRES_DB: onlineclipboard
+      POSTGRES_USER: onlineclipboard
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set a strong POSTGRES_PASSWORD in deploy/.env}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U onlineclipboard -d onlineclipboard"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  caddy:
+    image: caddy:2-alpine
+    profiles: [https]
+    environment:
+      CLIP_DOMAIN: ${CLIP_DOMAIN:-localhost}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  caddy_data:
+  caddy_config:

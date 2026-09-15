@@ -1,0 +1,10 @@
+# Example for a LAN IP using Caddy's private CA. Not enabled by compose.yaml.
+# Replace this address; configure the matching IP on the host and client URL.
+https://192.168.1.20 {
+    tls internal
+    reverse_proxy api:8080
+}
+
+# Alternative: mount a certificate/key with the exact IP in subjectAltName,
+# replace 'tls internal' with 'tls /certs/fullchain.pem /certs/private.key'.
+# Clients must trust the issuing CA; never disable certificate validation.
