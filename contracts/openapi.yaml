@@ -2,7 +2,7 @@ openapi: 3.0.3
 info:
   title: OnlineClipboard API
   version: 0.1.0-design
-  description: 设计契约。除健康检查、就绪检查和 server-info 外均未实现；当前业务路由返回 501。
+  description: v1 HTTP 契约。健康检查、就绪检查、server-info 及账号/保险库/密文/同步/设备接口已实现；客户端加密，服务端只存密文。
 servers:
 - url: https://clip.example.com
   description: 替换为用户的服务器 HTTPS origin
@@ -13,7 +13,7 @@ paths:
     get:
       operationId: health
       summary: 进程存活
-      x-implementation: skeleton
+      x-implementation: implemented
       responses:
         '200':
           description: 进程存活
@@ -32,7 +32,7 @@ paths:
     get:
       operationId: ready
       summary: 业务就绪（当前固定 503）
-      x-implementation: skeleton
+      x-implementation: implemented
       responses:
         '200':
           description: 业务就绪（当前固定 503）
@@ -53,7 +53,7 @@ paths:
     get:
       operationId: serverInfo
       summary: 服务能力发现
-      x-implementation: skeleton
+      x-implementation: implemented
       responses:
         '200':
           description: 服务能力发现
@@ -72,7 +72,7 @@ paths:
     post:
       operationId: register
       summary: 邀请注册与初始设备会话
-      x-implementation: planned
+      x-implementation: implemented
       responses:
         '201':
           description: 邀请注册与初始设备会话
@@ -127,7 +127,7 @@ paths:
     post:
       operationId: login
       summary: 密码登录
-      x-implementation: planned
+      x-implementation: implemented
       responses:
         '200':
           description: 密码登录
@@ -170,7 +170,7 @@ paths:
     post:
       operationId: refresh
       summary: 刷新并轮换令牌
-      x-implementation: planned
+      x-implementation: implemented
       responses:
         '200':
           description: 刷新并轮换令牌
@@ -213,7 +213,7 @@ paths:
     post:
       operationId: logout
       summary: 撤销当前会话
-      x-implementation: planned
+      x-implementation: implemented
       responses:
         '204':
           description: 撤销当前会话
@@ -233,7 +233,7 @@ paths:
     post:
       operationId: changePassword
       summary: 修改密码并撤销全部会话
-      x-implementation: planned
+      x-implementation: implemented
       responses:
         '204':
           description: 修改密码并撤销全部会话
@@ -259,7 +259,7 @@ paths:
     get:
       operationId: listDevices
       summary: 列出账号设备
-      x-implementation: planned
+      x-implementation: implemented
       responses:
         '200':
           description: 列出账号设备
@@ -283,7 +283,7 @@ paths:
     delete:
       operationId: revokeDevice
       summary: 撤销设备
-      x-implementation: planned
+      x-implementation: implemented
       responses:
         '204':
           description: 撤销设备
@@ -305,7 +305,7 @@ paths:
     get:
       operationId: getVault
       summary: 获取账号保险库信封
-      x-implementation: planned
+      x-implementation: implemented
       responses:
         '200':
           description: 获取账号保险库信封
@@ -334,7 +334,7 @@ paths:
     put:
       operationId: initializeVault
       summary: 仅首次初始化保险库
-      x-implementation: planned
+      x-implementation: implemented
       responses:
         '201':
           description: 仅首次初始化保险库
@@ -378,7 +378,7 @@ paths:
     post:
       operationId: createClip
       summary: 幂等创建密文条目
-      x-implementation: planned
+      x-implementation: implemented
       responses:
         '201':
           description: 幂等创建密文条目
@@ -431,7 +431,7 @@ paths:
     get:
       operationId: listClips
       summary: 分页历史或回收站；正文搜索在客户端
-      x-implementation: planned
+      x-implementation: implemented
       responses:
         '200':
           description: 分页历史或回收站；正文搜索在客户端
@@ -481,7 +481,7 @@ paths:
     get:
       operationId: getClip
       summary: 当前条目或墓碑
-      x-implementation: planned
+      x-implementation: implemented
       responses:
         '200':
           description: 当前条目或墓碑
@@ -523,7 +523,7 @@ paths:
     delete:
       operationId: trashClip
       summary: 移入回收站
-      x-implementation: planned
+      x-implementation: implemented
       responses:
         '200':
           description: 移入回收站
@@ -581,7 +581,7 @@ paths:
     post:
       operationId: restoreClip
       summary: 到期前恢复
-      x-implementation: planned
+      x-implementation: implemented
       responses:
         '200':
           description: 到期前恢复
@@ -639,7 +639,7 @@ paths:
     delete:
       operationId: purgeClip
       summary: 永久删除回收站条目
-      x-implementation: planned
+      x-implementation: implemented
       responses:
         '200':
           description: 永久删除回收站条目
@@ -697,7 +697,7 @@ paths:
     get:
       operationId: getChanges
       summary: 按账号游标拉取变化
-      x-implementation: planned
+      x-implementation: implemented
       responses:
         '200':
           description: 按账号游标拉取变化
@@ -747,7 +747,7 @@ paths:
     post:
       operationId: beginSnapshot
       summary: 开始有边界的收敛扫描
-      x-implementation: planned
+      x-implementation: implemented
       responses:
         '201':
           description: 开始有边界的收敛扫描
@@ -771,7 +771,7 @@ paths:
     get:
       operationId: getSnapshotPage
       summary: 扫描当前可见条目
-      x-implementation: planned
+      x-implementation: implemented
       responses:
         '200':
           description: 扫描当前可见条目
@@ -811,7 +811,7 @@ paths:
     get:
       operationId: subscribeChanges
       summary: WebSocket 变化提醒；帧见 ChangeHint
-      x-implementation: planned
+      x-implementation: implemented
       responses:
         '101':
           description: WebSocket 变化提醒；帧见 ChangeHint

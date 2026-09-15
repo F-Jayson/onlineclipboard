@@ -1,14 +1,14 @@
 # 文档导航与决策记录
 
-版本：设计草案 v0.1；日期：2026-09-15。文档中的“必须”“目标”“计划”描述待实现产品，不代表骨架已有该能力。
+版本：v0.1 实现中；日期：2026-09-15。需求与协议仍以本文档为准；已落地能力与未验证项见 [实现状态](implementation-status.md)。
 
 ## 推荐阅读顺序
 
 1. 产品负责人：[需求](01-requirements.md) → [客户端体验](07-clients.md) → [阶段验收](10-testing.md)。
 2. 开发者：[架构](02-architecture.md) → [安全](03-security.md) → [同步](04-sync-protocol.md) → [数据](05-data-model.md) → [接口](06-api.md) → [开发计划](09-development-plan.md)。
-3. 自托管用户：[项目入口](../README.md) → [部署运维](08-self-hosting.md)。当前只能部署骨架。
+3. 自托管用户：[项目入口](../README.md) → [部署运维](08-self-hosting.md)。
 
-本轮实际检查范围及结果：[交付验证记录](validation-report.md)。
+本轮实际检查范围及结果：[交付验证记录](validation-report.md)、[实现状态](implementation-status.md)。
 
 ## 已采用的设计决定
 

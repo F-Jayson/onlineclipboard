@@ -20,6 +20,7 @@ __pycache__/
 .venv/
 artifacts/
 backups/
+dist/
 *.dump
 server/clipd
 server/clipd.exe

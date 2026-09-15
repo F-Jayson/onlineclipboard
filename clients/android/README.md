@@ -1,16 +1,21 @@
-# Android 客户端骨架
+# Android 客户端
 
-环境基线：Android Studio、Android SDK 36、JDK 17 或 21、Gradle 8.13。AGP 8.13.2 / Kotlin 2.2.21 固定于构建脚本，后续增加 Compose 和测试依赖时需同步校验兼容关系。
-
-当前仓库**未包含 Gradle Wrapper 二进制与脚本**。先安装 Gradle 8.13，在本目录生成 Wrapper（需要网络下载）：
+环境：JDK 17/21、Android SDK 36、Gradle 8.13（本仓库 Wrapper）或 8.13–9.5。AGP 8.13.2 与 Gradle 9.6+ 不兼容。
 
 ```powershell
-gradle wrapper --gradle-version 8.13 --distribution-type bin
 ./gradlew.bat :app:assembleDebug
 ```
 
-Linux/macOS 的第二步使用 `./gradlew :app:assembleDebug`。Android SDK 路径通过 Android Studio 的 `local.properties` 或 ANDROID_HOME 设置；local.properties 不提交仓库。生成 Wrapper 后，校验官方 distributionSha256Sum 并将 wrapper 脚本/JAR/配置一起纳入后续开发提交。
+产物：`app/build/outputs/apk/debug/app-debug.apk`（debug 签名，仅用于开发安装）。
 
-也可由 Android Studio 打开本目录并配置本地 Gradle 8.13，再执行构建。当前只有静态说明 Activity 和接口，没有读取/写入系统剪贴板、请求网络、启动后台服务或注册 IME。
+`local.properties` 不要提交；设置 `ANDROID_HOME` 或由 Android Studio 生成 sdk.dir。
 
-普通模式与输入法增强的权限、交互及真机验收见 [客户端设计](../../docs/07-clients.md)。后续正式 UI 阶段适配 Android 15+ edge-to-edge 与窗口 insets，并加入 Compose；骨架静态入口不作为正式界面验收。
+## 普通模式能力
+
+- 仅在本 Activity **窗口有焦点** 且开启「前台采集」时读取剪贴板。
+- 支持系统分享 `text/plain` 上传。
+- 历史中点击「复制到本机」调用 `setPrimaryClip`。
+- 回前台时补拉增量；默认不以后台前台服务维持剪贴板读取。
+- 连接页「能力检查」分别探测读取、写入和 server-info 网络；系统粘贴需到其他应用手工确认。
+
+**不宣称**所有手机在后台实时同步。输入法增强未实现。非 loopback 地址必须 HTTPS，且不关闭证书校验。模拟器访问开发机使用 `http://10.0.2.2:端口`。

@@ -1,6 +1,6 @@
 # 协议契约
 
-- [openapi.yaml](openapi.yaml)：22 个 HTTP 操作的设计契约。`x-implementation` 区分骨架已有入口与计划业务；未实现业务返回 501。
+- [openapi.yaml](openapi.yaml)：22 个 HTTP 操作的契约。`x-implementation: implemented` 表示服务端已提供对应路由。
 - [crypto-v1-vectors.json](crypto-v1-vectors.json)：用于后续 Windows/Android 独立实现互通的固定参考输入和输出。
 - [加密规范](../docs/03-security.md)、[同步规范](../docs/04-sync-protocol.md) 约束跨字段语义；不能只按 JSON 字段名实现。
 

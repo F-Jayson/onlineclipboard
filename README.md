@@ -2,7 +2,7 @@
 
 一个支持用户自托管的文字剪贴板同步项目：Windows 与 Android 使用同一服务器、同一账号，在客户端加密文字，服务端保存密文；客户端提供历史搜索、删除、恢复及 7 天回收站。
 
-**当前交付是需求/设计文档与工程骨架，不是已经完成的同步软件。** 服务端可以启动并提供健康检查和能力信息；业务接口明确返回 `501 NOT_IMPLEMENTED`；两端仅有界面入口和接口定义。尚未实现账号、加密、数据库访问、剪贴板监听、同步与清理任务。
+当前仓库包含可运行的服务端、Windows 客户端和 Android 普通模式客户端。服务端在配置 `CLIP_DATABASE_URL` 后自动迁移并提供账号、密文同步与回收站；业务接口不再返回 501。实现进度与未验证项见 [实现状态](docs/implementation-status.md)。
 
 ## 从这里开始
 
@@ -32,12 +32,14 @@
 
 服务端：Go 1.26 / PostgreSQL 17 / REST + WebSocket；Windows：.NET 10 + WPF；Android：Kotlin + 原生 Android（后续采用 Compose）；部署：Docker Compose + Caddy。一个仓库管理协议和三端，首版无需 Redis、对象存储或外部推送账号。
 
-## 运行服务端骨架
+## 运行服务端
 
-安装 Go 1.26 或兼容的更新版本。在仓库根目录运行：
+需要 Go 1.26+ 和 PostgreSQL（开发验证使用 16，设计目标 17）。设置数据库连接后启动：
 
 ```powershell
 cd server
+$env:CLIP_DATABASE_URL = "postgres://onlineclipboard:onlineclipboard@127.0.0.1:5432/onlineclipboard?sslmode=disable"
+$env:CLIP_REGISTRATION_MODE = "invite"
 go run ./cmd/clipd
 ```
 
@@ -45,10 +47,14 @@ go run ./cmd/clipd
 
 ```powershell
 Invoke-RestMethod http://127.0.0.1:8080/healthz
+Invoke-RestMethod http://127.0.0.1:8080/readyz
 Invoke-RestMethod http://127.0.0.1:8080/api/v1/server-info
+go run ./cmd/clipd admin invite
 ```
 
-默认仅监听 `127.0.0.1:8080`。`/readyz` 返回 503，表示业务尚未就绪；健康检查成功不表示同步服务已完成。该启动方式不需要数据库。运行 `go test ./...`、`go vet ./...`、`go build ./...` 可验证骨架。
+默认监听 `127.0.0.1:8080`。`/readyz` 在数据库可达且迁移完成后返回 200。邀请模式下用 `admin invite` 生成一次性邀请码。也可 `CLIP_REGISTRATION_MODE=open` 仅用于受信开发环境。
+
+Compose 部署见 [自托管](docs/08-self-hosting.md)。Windows 开发：`dotnet run --project clients/windows/OnlineClipboard.Windows`。日常双击运行请使用自包含发布包 `dist/windows/OnlineClipboard.Windows.exe`（见 [Windows 客户端说明](clients/windows/README.md)），不要只拷贝 `bin` 里的 exe。Android：`clients/android` 下 `gradlew :app:assembleDebug`。
 
 ## 项目结构
 
@@ -64,4 +70,4 @@ deploy/                     Compose / Caddy 自托管模板
 scripts/                    静态校验工具
 ```
 
-客户端构建前提与命令见各自 README；部署模板的当前能力见 [部署文档](docs/08-self-hosting.md)。尚无正式安装包、发布镜像或生产可用版本。
+客户端构建前提与命令见各自 README；部署见 [自托管](docs/08-self-hosting.md)。当前没有商店签名安装包。Android 普通模式不能在所有手机后台实时读取剪贴板。

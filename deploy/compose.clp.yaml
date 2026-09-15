@@ -1,0 +1,42 @@
+name: onlineclipboard
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: onlineclipboard
+      POSTGRES_USER: onlineclipboard
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set a strong POSTGRES_PASSWORD in deploy/.env}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U onlineclipboard -d onlineclipboard"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
+  api:
+    build:
+      context: ../server
+    environment:
+      CLIP_HTTP_ADDR: 0.0.0.0:8080
+      CLIP_DATABASE_URL: postgres://onlineclipboard:${POSTGRES_PASSWORD}@postgres:5432/onlineclipboard?sslmode=disable
+      CLIP_REGISTRATION_MODE: ${CLIP_REGISTRATION_MODE:-invite}
+      CLIP_PUBLIC_ORIGIN: ${CLIP_PUBLIC_ORIGIN:-https://clp.fjayson.com}
+    ports:
+      - "127.0.0.1:18080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped
+
+volumes:
+  postgres_data:

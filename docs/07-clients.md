@@ -67,7 +67,7 @@ stateDiagram-v2
 
 ### 3.3 骨架
 
-`clients/windows/OnlineClipboard.Windows` 已有 WPF 入口、占位页面和接口。没有注册系统监听或读取用户剪贴板；正式实现从接口后接入，保证 UI 不直接耦合网络。
+`clients/windows/OnlineClipboard.Windows` 已接入系统剪贴板监听、账号/保险库、同步与历史。UI 仍直接调度 `SyncEngine`；网络不在 Win32 剪贴板回调内执行。
 
 ## 4. Android 平台能力
 

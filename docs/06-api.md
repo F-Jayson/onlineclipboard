@@ -1,6 +1,6 @@
 # 06 · HTTP 与 WebSocket 接口设计
 
-机器可读草案：[contracts/openapi.yaml](../contracts/openapi.yaml)。实现顺序见 [开发计划](09-development-plan.md)。**当前仅 `/healthz`、`/readyz`、`/api/v1/server-info` 有实际响应逻辑，其余 `/api/v1/*` 返回 501。**
+机器可读契约：[contracts/openapi.yaml](../contracts/openapi.yaml)。实现状态见 [implementation-status.md](implementation-status.md)。P0 业务路径已实现；未实现能力不得再依赖 501 作为占位。
 
 ## 1. 通用约定
 
@@ -17,7 +17,7 @@
 | 方法与路径 | 说明 | 成功结果 |
 | --- | --- | --- |
 | GET /healthz | 进程存活 | 200 |
-| GET /readyz | 正式版业务就绪；骨架固定不就绪 | 200 或 503 |
+| GET /readyz | 数据库可达且迁移完成后就绪 | 200 或 503 |
 | GET /api/v1/server-info | 服务版本、协议、能力、限制 | 200 |
 | POST /auth/register | 邀请+账号密码+设备描述，创建账号和初始会话 | 201 AuthResult |
 | POST /auth/login | 密码认证，创建本次设备会话 | 200 AuthResult |

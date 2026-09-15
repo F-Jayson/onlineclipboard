@@ -1,6 +1,5 @@
--- Design scaffold only. The current server does not apply this migration.
--- Apply once on an empty PostgreSQL 17 database using a future migration runner.
-BEGIN;
+-- Applied by the clipd migrator on an empty PostgreSQL 17 database.
+-- The migrator wraps each file in a transaction; do not add BEGIN/COMMIT here.
 
 CREATE TABLE users (
     id UUID PRIMARY KEY,
@@ -152,6 +151,4 @@ CREATE TABLE server_state (
     sync_epoch UUID NOT NULL,
     installed_at TIMESTAMPTZ NOT NULL DEFAULT clock_timestamp()
 );
--- Installation code must insert cryptographically random server_id/sync_epoch.
--- Do not seed production identities, passwords or recovery keys in migrations.
-COMMIT;
+-- Installation code inserts cryptographically random server_id/sync_epoch after migrate.
