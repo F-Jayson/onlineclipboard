@@ -116,6 +116,10 @@ public sealed class DeviceDto
     [JsonPropertyName("created_at")] public DateTimeOffset CreatedAt { get; set; }
     [JsonPropertyName("last_seen_at")] public DateTimeOffset? LastSeenAt { get; set; }
     [JsonPropertyName("revoked_at")] public DateTimeOffset? RevokedAt { get; set; }
+    public string StatusLabel => RevokedAt == null ? "可用" : "已撤销";
+    public string MetaLabel => LastSeenAt is { } seen
+        ? $"{Platform} · 最近 {seen.ToLocalTime():MM-dd HH:mm}"
+        : Platform;
 }
 
 public sealed class ApiError : Exception
@@ -140,5 +144,7 @@ public sealed class HistoryItem
     public string SourceDeviceId { get; set; } = "";
     public string Preview { get; set; } = "";
     public string Text { get; set; } = "";
-    public override string ToString() => $"{CreatedAt.ToLocalTime():MM-dd HH:mm}  {Preview}";
+    public string TimeLabel => CreatedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm");
+    public string ExpiresLabel => ExpiresAt is { } exp ? $"将于 {exp.ToLocalTime():MM-dd HH:mm} 永久删除" : "回收站";
+    public override string ToString() => $"{TimeLabel}  {Preview}";
 }

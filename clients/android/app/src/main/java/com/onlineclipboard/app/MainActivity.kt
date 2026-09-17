@@ -5,18 +5,15 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
-import android.graphics.Color
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
-import android.text.InputType
+import android.view.LayoutInflater
 import android.view.View
-import android.view.ViewGroup
-import android.widget.Button
-import android.widget.CheckBox
 import android.widget.EditText
+import android.widget.ImageView
 import android.widget.LinearLayout
-import android.widget.ScrollView
+import android.widget.Switch
 import android.widget.TextView
 import android.widget.Toast
 import com.onlineclipboard.app.core.ApiClient
@@ -58,13 +55,20 @@ class MainActivity : Activity() {
     private lateinit var detail: TextView
     private lateinit var trashList: LinearLayout
     private lateinit var deviceList: LinearLayout
-    private lateinit var capBox: CheckBox
-    private lateinit var writeBox: CheckBox
+    private lateinit var capBox: Switch
+    private lateinit var writeBox: Switch
     private lateinit var connectPage: View
     private lateinit var historyPage: View
     private lateinit var trashPage: View
     private lateinit var devicePage: View
     private lateinit var probeResult: TextView
+    private lateinit var historyEmpty: View
+    private lateinit var trashEmpty: View
+    private lateinit var deviceEmpty: View
+    private lateinit var tabConnect: LinearLayout
+    private lateinit var tabHistory: LinearLayout
+    private lateinit var tabTrash: LinearLayout
+    private lateinit var tabDevices: LinearLayout
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -79,7 +83,8 @@ class MainActivity : Activity() {
             api!!.accessToken = session.accessToken
             sync = SyncEngine(api!!, store, session)
         }
-        setContentView(buildUi())
+        setContentView(R.layout.activity_main)
+        bindViews()
         refreshHistory()
         handleShare(intent)
         if (session.cmk != null && api != null) bg { runCatching { sync!!.runOnce(::writeRemote) }; main.post { setStatus(sync?.status ?: "已解锁"); refreshHistory() } }
@@ -180,136 +185,69 @@ class MainActivity : Activity() {
         }
     }
 
-    private fun buildUi(): View {
-        val pad = dp(16)
-        val root = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setBackgroundColor(Color.parseColor("#F4F6FA"))
-            setPadding(pad, pad * 2, pad, pad)
-        }
-        status = TextView(this).apply {
-            textSize = 16f
-            text = if (session.cmk == null) "请连接服务器并解锁保险库" else "已解锁，可同步"
-        }
-        capBox = CheckBox(this).apply {
-            text = "前台采集"
-            isChecked = capture
-            setOnCheckedChangeListener { _, v ->
-                capture = v
-                session.capture = v
-                session.persist(store)
-            }
-        }
-        writeBox = CheckBox(this).apply {
-            text = "自动写入"
-            isChecked = autoWrite
-            setOnCheckedChangeListener { _, v ->
-                autoWrite = v
-                session.autoWrite = v
-                session.persist(store)
-            }
-        }
-        val header = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
-        header.addView(status, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
-        header.addView(capBox)
-        header.addView(writeBox)
-        root.addView(header)
+    private fun bindViews() {
+        status = findViewById(R.id.status)
+        originBox = findViewById(R.id.originBox)
+        userBox = findViewById(R.id.userBox)
+        passBox = findViewById(R.id.passBox)
+        inviteBox = findViewById(R.id.inviteBox)
+        recoveryBox = findViewById(R.id.recoveryBox)
+        originStatus = findViewById(R.id.originStatus)
+        keyStatus = findViewById(R.id.keyStatus)
+        searchBox = findViewById(R.id.searchBox)
+        historyList = findViewById(R.id.historyList)
+        detail = findViewById(R.id.detail)
+        trashList = findViewById(R.id.trashList)
+        deviceList = findViewById(R.id.deviceList)
+        capBox = findViewById(R.id.capBox)
+        writeBox = findViewById(R.id.writeBox)
+        connectPage = findViewById(R.id.pageConnect)
+        historyPage = findViewById(R.id.pageHistory)
+        trashPage = findViewById(R.id.pageTrash)
+        devicePage = findViewById(R.id.pageDevices)
+        probeResult = findViewById(R.id.probeResult)
+        historyEmpty = findViewById(R.id.historyEmpty)
+        trashEmpty = findViewById(R.id.trashEmpty)
+        deviceEmpty = findViewById(R.id.deviceEmpty)
+        tabConnect = findViewById(R.id.tabConnect)
+        tabHistory = findViewById(R.id.tabHistory)
+        tabTrash = findViewById(R.id.tabTrash)
+        tabDevices = findViewById(R.id.tabDevices)
 
-        val tabs = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
-        fun tab(label: String, idx: Int) = Button(this).apply {
-            text = label
-            setOnClickListener { showPage(idx) }
+        originBox.setText(session.origin.ifEmpty { "https://clp.fjayson.com" })
+        userBox.setText(store.getString("username") ?: "")
+        capBox.isChecked = capture
+        writeBox.isChecked = autoWrite
+        status.text = if (session.cmk == null) "请先解锁" else "已解锁"
+
+        capBox.setOnCheckedChangeListener { _, v ->
+            capture = v
+            session.capture = v
+            session.persist(store)
         }
-        tabs.addView(tab("连接", 0), LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
-        tabs.addView(tab("历史", 1), LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
-        tabs.addView(tab("回收站", 2), LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
-        tabs.addView(tab("设备", 3), LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
-        root.addView(tabs)
-
-        connectPage = buildConnect()
-        historyPage = buildHistory()
-        trashPage = buildTrash()
-        devicePage = buildDevices()
-        root.addView(connectPage, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f))
-        root.addView(historyPage, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f))
-        root.addView(trashPage, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f))
-        root.addView(devicePage, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f))
-        showPage(0)
-        return root
-    }
-
-    private fun buildConnect(): View {
-        val col = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(0, dp(8), 0, 0) }
-        originBox = field(session.origin.ifEmpty { "http://10.0.2.2:8080" })
-        userBox = field(store.getString("username") ?: "")
-        passBox = field("").apply { inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD }
-        inviteBox = field("")
-        recoveryBox = field("").apply { minLines = 2 }
-        originStatus = TextView(this)
-        keyStatus = TextView(this)
-        probeResult = TextView(this).apply { textSize = 13f }
-        col.addView(label("服务器地址"))
-        col.addView(originBox)
-        col.addView(row(btn("测试连接") { testOrigin() }, btn("能力检查") { probe() }))
-        col.addView(originStatus)
-        col.addView(label("用户名"))
-        col.addView(userBox)
-        col.addView(label("密码（12 位以上）"))
-        col.addView(passBox)
-        col.addView(label("邀请码（注册）"))
-        col.addView(inviteBox)
-        col.addView(row(btn("登录") { auth(false) }, btn("注册") { auth(true) }))
-        col.addView(label("恢复密钥"))
-        col.addView(recoveryBox)
-        col.addView(row(btn("解锁保险库") { unlock() }, btn("初始化新保险库") { initVault() }))
-        col.addView(keyStatus)
-        col.addView(label("普通模式说明"))
-        col.addView(TextView(this).apply {
-            text = "Android 10+ 仅在本窗口有焦点时读取剪贴板。后台实时同步未宣称支持。可通过系统分享或点“复制”同步。输入法增强尚未实现。"
-            textSize = 13f
-        })
-        col.addView(probeResult)
-        return ScrollView(this).apply { addView(col) }
-    }
-
-    private fun buildHistory(): View {
-        val col = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-        searchBox = field("").apply { hint = "搜索已下载正文" }
+        writeBox.setOnCheckedChangeListener { _, v ->
+            autoWrite = v
+            session.autoWrite = v
+            session.persist(store)
+        }
         searchBox.addTextChangedListener(SimpleWatcher { refreshHistory() })
-        col.addView(row(searchBox, btn("同步") { syncNow() }))
-        historyList = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-        col.addView(ScrollView(this).apply {
-            addView(historyList)
-            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f)
-        })
-        detail = TextView(this).apply { textSize = 15f }
-        col.addView(detail)
-        col.addView(row(btn("复制到本机") {
-            selected?.let { copyLocal(it.text) }
-        }, btn("删除到回收站") { trashSelectedItem() }))
-        return col
-    }
-
-    private fun buildTrash(): View {
-        val col = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-        trashList = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-        col.addView(ScrollView(this).apply {
-            addView(trashList)
-            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f)
-        })
-        col.addView(row(btn("恢复") { restoreItem() }, btn("永久删除") { purgeItem() }))
-        return col
-    }
-
-    private fun buildDevices(): View {
-        val col = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-        deviceList = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-        col.addView(ScrollView(this).apply {
-            addView(deviceList)
-            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f)
-        })
-        col.addView(btn("撤销选中设备") { revokeSelected() })
-        return col
+        findViewById<View>(R.id.btnTest).setOnClickListener { testOrigin() }
+        findViewById<View>(R.id.btnProbe).setOnClickListener { probe() }
+        findViewById<View>(R.id.btnLogin).setOnClickListener { auth(false) }
+        findViewById<View>(R.id.btnRegister).setOnClickListener { auth(true) }
+        findViewById<View>(R.id.btnUnlock).setOnClickListener { unlock() }
+        findViewById<View>(R.id.btnInitVault).setOnClickListener { initVault() }
+        findViewById<View>(R.id.btnSync).setOnClickListener { syncNow() }
+        findViewById<View>(R.id.btnCopy).setOnClickListener { selected?.let { copyLocal(it.text) } }
+        findViewById<View>(R.id.btnTrash).setOnClickListener { trashSelectedItem() }
+        findViewById<View>(R.id.btnRestore).setOnClickListener { restoreItem() }
+        findViewById<View>(R.id.btnPurge).setOnClickListener { purgeItem() }
+        findViewById<View>(R.id.btnRevoke).setOnClickListener { revokeSelected() }
+        tabConnect.setOnClickListener { showPage(0) }
+        tabHistory.setOnClickListener { showPage(1) }
+        tabTrash.setOnClickListener { showPage(2) }
+        tabDevices.setOnClickListener { showPage(3) }
+        showPage(0)
     }
 
     private fun showPage(idx: Int) {
@@ -318,7 +256,20 @@ class MainActivity : Activity() {
         historyPage.visibility = if (idx == 1) View.VISIBLE else View.GONE
         trashPage.visibility = if (idx == 2) View.VISIBLE else View.GONE
         devicePage.visibility = if (idx == 3) View.VISIBLE else View.GONE
+        styleTab(tabConnect, idx == 0)
+        styleTab(tabHistory, idx == 1)
+        styleTab(tabTrash, idx == 2)
+        styleTab(tabDevices, idx == 3)
         if (idx == 3) loadDevices()
+    }
+
+    private fun styleTab(tab: LinearLayout, on: Boolean) {
+        val color = getColor(if (on) R.color.accent else R.color.muted)
+        (tab.getChildAt(0) as ImageView).setColorFilter(color)
+        val label = tab.getChildAt(1) as TextView
+        label.setTextColor(color)
+        label.paint.isFakeBoldText = on
+        tab.setBackgroundResource(if (on) R.drawable.bg_tab_active else 0)
     }
 
     private fun testOrigin() {
@@ -542,21 +493,28 @@ class MainActivity : Activity() {
                 val list = mutableListOf<JSONObject>()
                 for (i in 0 until arr.length()) list.add(arr.getJSONObject(i))
                 devices = list
-                main.post {
-                    deviceList.removeAllViews()
-                    list.forEachIndexed { idx, d ->
-                        val row = TextView(this).apply {
-                            text = "${d.optString("name")} (${d.optString("platform")})" +
-                                if (d.has("revoked_at") && d.get("revoked_at") != JSONObject.NULL) " 已撤销" else ""
-                            textSize = 16f
-                            setPadding(dp(8), dp(8), dp(8), dp(8))
-                            setOnClickListener { deviceIndex = idx }
-                        }
-                        deviceList.addView(row)
-                    }
-                }
+                main.post { renderDeviceList() }
             } catch (_: Exception) {
             }
+        }
+    }
+
+    private fun renderDeviceList() {
+        if (!::deviceList.isInitialized) return
+        deviceList.removeAllViews()
+        deviceEmpty.visibility = if (devices.isEmpty()) View.VISIBLE else View.GONE
+        devices.forEachIndexed { idx, d ->
+            val row = LayoutInflater.from(this).inflate(R.layout.item_device, deviceList, false)
+            val revoked = d.has("revoked_at") && d.get("revoked_at") != JSONObject.NULL
+            row.findViewById<TextView>(R.id.deviceName).text = d.optString("name")
+            row.findViewById<TextView>(R.id.deviceMeta).text = d.optString("platform")
+            row.findViewById<TextView>(R.id.deviceStatus).text = if (revoked) "已撤销" else "可用"
+            row.setBackgroundResource(if (deviceIndex == idx) R.drawable.bg_card_selected else R.drawable.bg_card)
+            row.setOnClickListener {
+                deviceIndex = idx
+                renderDeviceList()
+            }
+            deviceList.addView(row)
         }
     }
 
@@ -580,45 +538,59 @@ class MainActivity : Activity() {
         if (q.isNotEmpty() && session.cmk != null) active = active.filter { it.text.contains(q, true) }
         if (::historyList.isInitialized) {
             historyList.removeAllViews()
+            historyEmpty.visibility = if (active.isEmpty()) View.VISIBLE else View.GONE
             active.forEach { item ->
-                historyList.addView(TextView(this).apply {
-                    text = item.preview
-                    textSize = 16f
-                    setPadding(dp(8), dp(10), dp(8), dp(10))
-                    setOnClickListener {
-                        selected = item
-                        detail.text = item.text
-                    }
-                })
+                val row = LayoutInflater.from(this).inflate(R.layout.item_clip, historyList, false)
+                row.findViewById<TextView>(R.id.preview).text = item.preview
+                row.findViewById<TextView>(R.id.meta).text = formatTime(item.createdAt)
+                row.setBackgroundResource(if (selected?.id == item.id) R.drawable.bg_card_selected else R.drawable.bg_card)
+                row.setOnClickListener {
+                    selected = item
+                    detail.text = item.text
+                    refreshHistory()
+                }
+                historyList.addView(row)
             }
         }
         if (::trashList.isInitialized) {
+            val trash = store.loadClips("trash")
             trashList.removeAllViews()
-            store.loadClips("trash").forEach { item ->
-                trashList.addView(TextView(this).apply {
-                    text = item.preview + if (item.expiresAt != null) "  到期 ${item.expiresAt}" else ""
-                    textSize = 16f
-                    setPadding(dp(8), dp(10), dp(8), dp(10))
-                    setOnClickListener { trashSelected = item }
-                })
+            trashEmpty.visibility = if (trash.isEmpty()) View.VISIBLE else View.GONE
+            trash.forEach { item ->
+                val row = LayoutInflater.from(this).inflate(R.layout.item_clip, trashList, false)
+                row.findViewById<TextView>(R.id.preview).text = item.preview
+                row.findViewById<TextView>(R.id.meta).text =
+                    if (item.expiresAt != null) "将于 ${formatTime(item.expiresAt)} 永久删除" else "回收站"
+                row.findViewById<TextView>(R.id.meta).setTextColor(getColor(R.color.warning))
+                row.setBackgroundResource(if (trashSelected?.id == item.id) R.drawable.bg_card_selected else R.drawable.bg_card)
+                row.setOnClickListener {
+                    trashSelected = item
+                    refreshHistory()
+                }
+                trashList.addView(row)
             }
         }
         if (q.isNotEmpty()) setStatus("搜索已下载的 ${active.size} 条")
     }
 
     private fun setStatus(text: String) {
-        if (::status.isInitialized) status.text = text
+        if (!::status.isInitialized) return
+        status.text = text
+        status.setTextColor(getColor(if (session.cmk != null) R.color.on_accent else R.color.sidebar_muted))
     }
 
-    private fun label(text: String) = TextView(this).apply { this.text = text; setPadding(0, dp(8), 0, dp(4)) }
-    private fun field(value: String) = EditText(this).apply { setText(value); setSingleLine() }
-    private fun btn(text: String, click: () -> Unit) = Button(this).apply { this.text = text; setOnClickListener { click() } }
-    private fun row(a: View, b: View) = LinearLayout(this).apply {
-        orientation = LinearLayout.HORIZONTAL
-        addView(a, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
-        addView(b, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+    private fun formatTime(raw: String?): String {
+        if (raw.isNullOrBlank()) return ""
+        return try {
+            val instant = java.time.Instant.parse(raw)
+            java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")
+                .withZone(java.time.ZoneId.systemDefault())
+                .format(instant)
+        } catch (_: Exception) {
+            raw.take(16).replace('T', ' ')
+        }
     }
-    private fun dp(v: Int) = (v * resources.displayMetrics.density).toInt()
+
     private fun bg(block: () -> Unit) {
         Thread(block).start()
     }

@@ -1,0 +1,203 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/sidebar"
+    android:fitsSystemWindows="true"
+    android:orientation="vertical">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingStart="20dp"
+        android:paddingTop="16dp"
+        android:paddingEnd="20dp"
+        android:paddingBottom="18dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <ImageView
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:contentDescription="@null"
+                android:src="@drawable/ic_mark" />
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="12dp"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="云剪贴板"
+                    android:textColor="@color/on_accent"
+                    android:textSize="18sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:text="端到端加密同步"
+                    android:textColor="@color/sidebar_muted"
+                    android:textSize="12sp" />
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/status"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:background="@drawable/bg_status_pill"
+                android:ellipsize="end"
+                android:maxWidth="148dp"
+                android:maxLines="2"
+                android:paddingStart="10dp"
+                android:paddingTop="6dp"
+                android:paddingEnd="10dp"
+                android:paddingBottom="6dp"
+                android:text="正在启动…"
+                android:textColor="@color/sidebar_muted"
+                android:textSize="11sp" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:background="@drawable/bg_header_switch"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingStart="14dp"
+            android:paddingTop="10dp"
+            android:paddingEnd="14dp"
+            android:paddingBottom="10dp">
+
+            <Switch
+                android:id="@+id/capBox"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="前台采集"
+                android:textColor="@color/on_accent"
+                android:textSize="13sp"
+                android:thumbTint="@color/accent"
+                android:trackTint="#FF334155" />
+
+            <Switch
+                android:id="@+id/writeBox"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:checked="true"
+                android:text="自动写入"
+                android:textColor="@color/on_accent"
+                android:textSize="13sp"
+                android:thumbTint="@color/accent"
+                android:trackTint="#FF334155" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:background="@drawable/bg_content"
+        android:paddingTop="4dp">
+
+        <include
+            android:id="@+id/pageConnect"
+            layout="@layout/page_connect" />
+
+        <include
+            android:id="@+id/pageHistory"
+            layout="@layout/page_history" />
+
+        <include
+            android:id="@+id/pageTrash"
+            layout="@layout/page_trash" />
+
+        <include
+            android:id="@+id/pageDevices"
+            layout="@layout/page_devices" />
+    </FrameLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@drawable/bg_bottom_nav"
+        android:orientation="horizontal"
+        android:paddingStart="8dp"
+        android:paddingTop="6dp"
+        android:paddingEnd="8dp"
+        android:paddingBottom="10dp">
+
+        <LinearLayout
+            android:id="@+id/tabConnect"
+            style="@style/NavTab">
+
+            <ImageView
+                android:layout_width="22dp"
+                android:layout_height="22dp"
+                android:contentDescription="@null"
+                android:src="@drawable/ic_nav_connect" />
+
+            <TextView
+                style="@style/NavTabLabel"
+                android:text="连接" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/tabHistory"
+            style="@style/NavTab">
+
+            <ImageView
+                android:layout_width="22dp"
+                android:layout_height="22dp"
+                android:contentDescription="@null"
+                android:src="@drawable/ic_nav_history" />
+
+            <TextView
+                style="@style/NavTabLabel"
+                android:text="历史" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/tabTrash"
+            style="@style/NavTab">
+
+            <ImageView
+                android:layout_width="22dp"
+                android:layout_height="22dp"
+                android:contentDescription="@null"
+                android:src="@drawable/ic_nav_trash" />
+
+            <TextView
+                style="@style/NavTabLabel"
+                android:text="回收站" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/tabDevices"
+            style="@style/NavTab">
+
+            <ImageView
+                android:layout_width="22dp"
+                android:layout_height="22dp"
+                android:contentDescription="@null"
+                android:src="@drawable/ic_nav_devices" />
+
+            <TextView
+                style="@style/NavTabLabel"
+                android:text="设备" />
+        </LinearLayout>
+    </LinearLayout>
+</LinearLayout>

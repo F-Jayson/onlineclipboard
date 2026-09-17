@@ -1,107 +1,265 @@
 <Window x:Class="OnlineClipboard.Windows.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="云剪贴板" Height="640" Width="920"
-        MinHeight="520" MinWidth="720" Background="#F4F6FA"
+        xmlns:core="clr-namespace:OnlineClipboard.Windows.Core"
+        Title="云剪贴板"
+        Height="760" Width="1120"
+        MinHeight="640" MinWidth="960"
+        WindowStartupLocation="CenterScreen"
         Loaded="OnLoaded" Closed="OnClosed">
-    <DockPanel Margin="16">
-        <Border DockPanel.Dock="Top" Background="White" CornerRadius="10" Padding="16" Margin="0,0,0,12">
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="Auto" />
-                </Grid.ColumnDefinitions>
-                <StackPanel>
-                    <TextBlock Text="云剪贴板" FontSize="22" FontWeight="SemiBold" />
-                    <TextBlock x:Name="StatusText" Margin="0,4,0,0" Foreground="#5A6475" Text="正在启动…" />
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="236" />
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+
+        <DockPanel Grid.Column="0" Background="{StaticResource SidebarBrush}" LastChildFill="True">
+            <StackPanel DockPanel.Dock="Top" Margin="22,22,22,12">
+                <StackPanel Orientation="Horizontal">
+                    <Border Width="36" Height="36" CornerRadius="10" Background="{StaticResource AccentBrush}">
+                        <TextBlock Text="&#xE8C8;" FontFamily="{StaticResource IconFont}" FontSize="16"
+                                   Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    </Border>
+                    <StackPanel Margin="12,0,0,0" VerticalAlignment="Center">
+                        <TextBlock Text="云剪贴板" Foreground="White" FontSize="16" FontWeight="SemiBold" />
+                        <TextBlock Text="端到端加密同步" Foreground="#94A3B8" FontSize="11" Margin="0,2,0,0" />
+                    </StackPanel>
                 </StackPanel>
-                <StackPanel Grid.Column="1" Orientation="Horizontal">
-                    <CheckBox x:Name="CaptureBox" Content="采集复制" VerticalAlignment="Center" Margin="0,0,12,0" Checked="OnToggleCapture" Unchecked="OnToggleCapture" />
-                    <CheckBox x:Name="WriteBox" Content="自动写入" VerticalAlignment="Center" IsChecked="True" Checked="OnToggleWrite" Unchecked="OnToggleWrite" />
-                </StackPanel>
-            </Grid>
-        </Border>
-        <TabControl x:Name="Tabs">
-            <TabItem Header="连接">
-                <ScrollViewer VerticalScrollBarVisibility="Auto">
-                    <StackPanel Margin="16">
-                        <TextBlock Text="服务器地址" FontWeight="SemiBold" />
-                        <TextBox x:Name="OriginBox" Margin="0,6,0,8" Padding="8" Text="http://127.0.0.1:8080" />
-                        <Button Content="测试连接" Width="120" HorizontalAlignment="Left" Click="OnTestOrigin" />
-                        <TextBlock x:Name="OriginStatus" Margin="0,8,0,16" TextWrapping="Wrap" />
-                        <TextBlock Text="账号" FontWeight="SemiBold" />
-                        <Grid Margin="0,6,0,0">
+            </StackPanel>
+
+            <StackPanel DockPanel.Dock="Bottom" Margin="18,8,18,20">
+                <Border Background="#1F2937" CornerRadius="12" Padding="12">
+                    <StackPanel>
+                        <CheckBox x:Name="CaptureBox" Content="采集复制" Margin="0,0,0,10"
+                                  Checked="OnToggleCapture" Unchecked="OnToggleCapture" />
+                        <CheckBox x:Name="WriteBox" Content="自动写入" IsChecked="True"
+                                  Checked="OnToggleWrite" Unchecked="OnToggleWrite" />
+                    </StackPanel>
+                </Border>
+                <TextBlock x:Name="SidebarStatus" Margin="4,10,4,0" Foreground="#64748B" FontSize="11"
+                           TextWrapping="Wrap" Text="未解锁" />
+            </StackPanel>
+
+            <StackPanel Margin="6,8,6,0">
+                <Button x:Name="NavConnect" Style="{StaticResource NavButton}" Tag="Active" Click="OnNavConnect">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="&#xE774;" FontFamily="{StaticResource IconFont}" FontSize="15" Width="22" VerticalAlignment="Center" />
+                        <TextBlock Text="连接" Margin="8,0,0,0" VerticalAlignment="Center" />
+                    </StackPanel>
+                </Button>
+                <Button x:Name="NavHistory" Style="{StaticResource NavButton}" Click="OnNavHistory">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="&#xE81C;" FontFamily="{StaticResource IconFont}" FontSize="15" Width="22" VerticalAlignment="Center" />
+                        <TextBlock Text="历史" Margin="8,0,0,0" VerticalAlignment="Center" />
+                    </StackPanel>
+                </Button>
+                <Button x:Name="NavTrash" Style="{StaticResource NavButton}" Click="OnNavTrash">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="&#xE74D;" FontFamily="{StaticResource IconFont}" FontSize="15" Width="22" VerticalAlignment="Center" />
+                        <TextBlock Text="回收站" Margin="8,0,0,0" VerticalAlignment="Center" />
+                    </StackPanel>
+                </Button>
+                <Button x:Name="NavDevices" Style="{StaticResource NavButton}" Click="OnNavDevices">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="&#xE770;" FontFamily="{StaticResource IconFont}" FontSize="15" Width="22" VerticalAlignment="Center" />
+                        <TextBlock Text="设备" Margin="8,0,0,0" VerticalAlignment="Center" />
+                    </StackPanel>
+                </Button>
+            </StackPanel>
+        </DockPanel>
+
+        <Border Grid.Column="1" Background="{StaticResource PageBrush}" CornerRadius="24,0,0,24" ClipToBounds="True">
+            <DockPanel Margin="28,24,28,24">
+                <DockPanel DockPanel.Dock="Top" Margin="0,0,0,18">
+                    <Border DockPanel.Dock="Right" Background="White" CornerRadius="999" Padding="12,7"
+                            BorderBrush="{StaticResource LineBrush}" BorderThickness="1" VerticalAlignment="Center">
+                        <StackPanel Orientation="Horizontal">
+                            <Ellipse x:Name="StatusDot" Width="8" Height="8" Fill="#94A3B8" Margin="0,0,8,0" VerticalAlignment="Center" />
+                            <TextBlock x:Name="StatusText" Foreground="{StaticResource AccentBrush}" FontSize="12" Text="正在启动…" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Border>
+                    <StackPanel>
+                        <TextBlock x:Name="PageTitle" Text="连接与账号" FontSize="22" FontWeight="SemiBold" />
+                        <TextBlock x:Name="PageSubtitle" Style="{StaticResource HintText}" Margin="0,4,16,0"
+                                   Text="连接自托管服务器，登录后用恢复密钥解锁" />
+                    </StackPanel>
+                </DockPanel>
+
+                <Grid>
+                    <ScrollViewer x:Name="ConnectPage" VerticalScrollBarVisibility="Auto">
+                        <Grid>
                             <Grid.ColumnDefinitions>
-                                <ColumnDefinition />
-                                <ColumnDefinition />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="*" />
                             </Grid.ColumnDefinitions>
-                            <StackPanel Margin="0,0,8,0">
-                                <TextBlock Text="用户名" />
-                                <TextBox x:Name="UserBox" Margin="0,4,0,8" Padding="6" />
-                                <TextBlock Text="密码（12 位以上）" />
-                                <PasswordBox x:Name="PassBox" Margin="0,4,0,8" Padding="6" />
-                                <TextBlock Text="邀请码（注册）" />
-                                <TextBox x:Name="InviteBox" Margin="0,4,0,8" Padding="6" />
-                                <StackPanel Orientation="Horizontal">
-                                    <Button Content="登录" Width="100" Click="OnLogin" />
-                                    <Button Content="注册" Width="100" Margin="8,0,0,0" Click="OnRegister" />
+                            <Border Style="{StaticResource CardBorder}" Margin="0,0,10,0">
+                                <StackPanel>
+                                    <TextBlock Style="{StaticResource SectionTitle}" Text="服务器" />
+                                    <TextBlock Style="{StaticResource HintText}" Margin="0,0,0,14"
+                                               Text="填写主机地址即可，不要带 /api 路径。非本机必须使用 HTTPS。" />
+                                    <TextBlock Style="{StaticResource FieldLabel}" Text="服务器地址" />
+                                    <TextBox x:Name="OriginBox" Text="https://clp.fjayson.com" />
+                                    <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
+                                        <Button Content="测试连接" Click="OnTestOrigin" />
+                                    </StackPanel>
+                                    <TextBlock x:Name="OriginStatus" Style="{StaticResource HintText}" Margin="0,10,0,18" />
+
+                                    <TextBlock Style="{StaticResource SectionTitle}" Text="账号" />
+                                    <TextBlock Style="{StaticResource FieldLabel}" Text="用户名" />
+                                    <TextBox x:Name="UserBox" />
+                                    <TextBlock Style="{StaticResource FieldLabel}" Margin="0,12,0,6" Text="密码（至少 12 位）" />
+                                    <PasswordBox x:Name="PassBox" />
+                                    <TextBlock Style="{StaticResource FieldLabel}" Margin="0,12,0,6" Text="邀请码（仅注册需要）" />
+                                    <TextBox x:Name="InviteBox" />
+                                    <StackPanel Orientation="Horizontal" Margin="0,16,0,0">
+                                        <Button Content="登录" Width="108" Click="OnLogin" />
+                                        <Button Content="注册" Width="108" Margin="8,0,0,0" Style="{StaticResource SecondaryButton}" Click="OnRegister" />
+                                    </StackPanel>
                                 </StackPanel>
-                            </StackPanel>
-                            <StackPanel Grid.Column="1">
-                                <TextBlock Text="恢复密钥" />
-                                <TextBox x:Name="RecoveryBox" Margin="0,4,0,8" Padding="6" TextWrapping="Wrap" Height="64" />
-                                <Button Content="解锁保险库" Width="140" HorizontalAlignment="Left" Click="OnUnlock" />
-                                <Button Content="初始化新保险库" Width="140" HorizontalAlignment="Left" Margin="0,8,0,0" Click="OnInitVault" />
-                                <TextBlock x:Name="KeyStatus" Margin="0,8,0,0" TextWrapping="Wrap" />
+                            </Border>
+
+                            <Border Grid.Column="1" Style="{StaticResource CardBorder}" Margin="10,0,0,0">
+                                <StackPanel>
+                                    <TextBlock Style="{StaticResource SectionTitle}" Text="保险库" />
+                                    <TextBlock Style="{StaticResource HintText}" Margin="0,0,0,14"
+                                               Text="登录密码不能解密历史。恢复密钥只在这台设备输入，请离线保存。" />
+                                    <TextBlock Style="{StaticResource FieldLabel}" Text="恢复密钥" />
+                                    <TextBox x:Name="RecoveryBox" Height="92" TextWrapping="Wrap" AcceptsReturn="True"
+                                             FontFamily="{StaticResource MonoFont}" FontSize="12.5" />
+                                    <StackPanel Orientation="Horizontal" Margin="0,16,0,0">
+                                        <Button Content="解锁保险库" Click="OnUnlock" />
+                                        <Button Content="初始化新保险库" Margin="8,0,0,0" Style="{StaticResource GhostButton}" Click="OnInitVault" />
+                                    </StackPanel>
+                                    <TextBlock x:Name="KeyStatus" Style="{StaticResource HintText}" Margin="0,14,0,0" />
+                                </StackPanel>
+                            </Border>
+                        </Grid>
+                    </ScrollViewer>
+
+                    <Grid x:Name="HistoryPage" Visibility="Collapsed">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                            <RowDefinition Height="188" />
+                        </Grid.RowDefinitions>
+                        <DockPanel Margin="0,0,0,12">
+                            <Button DockPanel.Dock="Right" Content="立即同步" Click="OnSync" />
+                            <Grid Margin="0,0,10,0">
+                                <TextBox x:Name="SearchBox" TextChanged="OnSearch" />
+                                <TextBlock x:Name="SearchHint" Text="搜索已下载的正文"
+                                           Foreground="#94A3B8" Margin="14,10,0,0" IsHitTestVisible="False" />
+                            </Grid>
+                        </DockPanel>
+                        <Grid Grid.Row="1">
+                            <ListBox x:Name="HistoryList" SelectionChanged="OnSelectHistory">
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate DataType="{x:Type core:HistoryItem}">
+                                        <DockPanel>
+                                            <Border DockPanel.Dock="Right" CornerRadius="999" Padding="8,3" VerticalAlignment="Top"
+                                                    Background="#EEF2FF" Margin="10,0,0,0">
+                                                <TextBlock Text="文本" Foreground="#4F46E5" FontSize="11" />
+                                            </Border>
+                                            <StackPanel>
+                                                <TextBlock Text="{Binding Preview}" FontSize="14" FontWeight="SemiBold" TextWrapping="Wrap" />
+                                                <TextBlock Text="{Binding TimeLabel}" Foreground="#64748B" FontSize="11" Margin="0,6,0,0" />
+                                            </StackPanel>
+                                        </DockPanel>
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+                            <StackPanel x:Name="HistoryEmpty" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                <Border Width="56" Height="56" CornerRadius="16" Background="#EEF2FF" HorizontalAlignment="Center">
+                                    <TextBlock Text="&#xE8C8;" FontFamily="{StaticResource IconFont}" FontSize="22"
+                                               Foreground="{StaticResource AccentBrush}"
+                                               HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                </Border>
+                                <TextBlock Text="还没有剪贴记录" FontSize="15" FontWeight="SemiBold"
+                                           HorizontalAlignment="Center" Margin="0,12,0,0" />
+                                <TextBlock Text="解锁后复制文字即可同步" Style="{StaticResource HintText}"
+                                           HorizontalAlignment="Center" Margin="0,4,0,0" />
                             </StackPanel>
                         </Grid>
-                    </StackPanel>
-                </ScrollViewer>
-            </TabItem>
-            <TabItem Header="历史">
-                <Grid Margin="12">
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="*" />
-                        <RowDefinition Height="160" />
-                    </Grid.RowDefinitions>
-                    <DockPanel>
-                        <Button DockPanel.Dock="Right" Content="同步" Width="80" Click="OnSync" />
-                        <TextBox x:Name="SearchBox" Margin="0,0,8,8" Padding="6" TextChanged="OnSearch" />
-                    </DockPanel>
-                    <ListBox x:Name="HistoryList" Grid.Row="1" SelectionChanged="OnSelectHistory" />
-                    <DockPanel Grid.Row="2" Margin="0,8,0,0">
-                        <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Margin="0,8,0,0">
-                            <Button Content="复制到本机" Width="110" Click="OnCopySelected" />
-                            <Button Content="删除到回收站" Width="120" Margin="8,0,0,0" Click="OnTrashSelected" />
+                        <Border Grid.Row="2" Style="{StaticResource CardBorder}" Margin="0,12,0,0" Padding="16">
+                            <DockPanel>
+                                <StackPanel DockPanel.Dock="Right" Width="132" Margin="12,0,0,0">
+                                    <Button Content="复制到本机" Click="OnCopySelected" />
+                                    <Button Content="删到回收站" Margin="0,8,0,0" Style="{StaticResource GhostButton}" Click="OnTrashSelected" />
+                                </StackPanel>
+                                <TextBox x:Name="DetailBox" IsReadOnly="True" TextWrapping="Wrap"
+                                         VerticalScrollBarVisibility="Auto" Background="#F8FAFC" />
+                            </DockPanel>
+                        </Border>
+                    </Grid>
+
+                    <Grid x:Name="TrashPage" Visibility="Collapsed">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="*" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <Grid>
+                            <ListBox x:Name="TrashList">
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate DataType="{x:Type core:HistoryItem}">
+                                        <StackPanel>
+                                            <TextBlock Text="{Binding Preview}" FontSize="14" FontWeight="SemiBold" TextWrapping="Wrap" />
+                                            <TextBlock Text="{Binding ExpiresLabel}" Foreground="#B45309" FontSize="11" Margin="0,6,0,0" />
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+                            <StackPanel x:Name="TrashEmpty" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                <Border Width="56" Height="56" CornerRadius="16" Background="#EEF2FF" HorizontalAlignment="Center">
+                                    <TextBlock Text="&#xE74D;" FontFamily="{StaticResource IconFont}" FontSize="22"
+                                               Foreground="{StaticResource AccentBrush}"
+                                               HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                </Border>
+                                <TextBlock Text="回收站是空的" FontSize="15" FontWeight="SemiBold"
+                                           HorizontalAlignment="Center" Margin="0,12,0,0" />
+                            </StackPanel>
+                        </Grid>
+                        <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,12,0,0">
+                            <Button Content="恢复" Width="110" Click="OnRestore" />
+                            <Button Content="永久删除" Width="110" Margin="8,0,0,0" Style="{StaticResource DangerButton}" Click="OnPurge" />
                         </StackPanel>
-                        <TextBox x:Name="DetailBox" IsReadOnly="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" />
-                    </DockPanel>
+                    </Grid>
+
+                    <Grid x:Name="DevicePage" Visibility="Collapsed">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="*" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <Grid>
+                            <ListBox x:Name="DeviceList">
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate DataType="{x:Type core:DeviceDto}">
+                                        <DockPanel>
+                                            <Border DockPanel.Dock="Right" CornerRadius="999" Padding="8,3" VerticalAlignment="Center"
+                                                    Background="#EEF2FF">
+                                                <TextBlock Text="{Binding StatusLabel}" Foreground="#4F46E5" FontSize="11" />
+                                            </Border>
+                                            <StackPanel>
+                                                <TextBlock Text="{Binding Name}" FontSize="14" FontWeight="SemiBold" />
+                                                <TextBlock Text="{Binding MetaLabel}" Foreground="#64748B" FontSize="11" Margin="0,4,0,0" />
+                                            </StackPanel>
+                                        </DockPanel>
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+                            <StackPanel x:Name="DeviceEmpty" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                <Border Width="56" Height="56" CornerRadius="16" Background="#EEF2FF" HorizontalAlignment="Center">
+                                    <TextBlock Text="&#xE770;" FontFamily="{StaticResource IconFont}" FontSize="22"
+                                               Foreground="{StaticResource AccentBrush}"
+                                               HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                </Border>
+                                <TextBlock Text="登录并解锁后可查看设备" FontSize="15" FontWeight="SemiBold"
+                                           HorizontalAlignment="Center" Margin="0,12,0,0" />
+                            </StackPanel>
+                        </Grid>
+                        <Button Grid.Row="1" Content="撤销选中设备" Width="148" HorizontalAlignment="Left" Margin="0,12,0,0"
+                                Style="{StaticResource DangerButton}" Click="OnRevoke" />
+                    </Grid>
                 </Grid>
-            </TabItem>
-            <TabItem Header="回收站">
-                <Grid Margin="12">
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="*" />
-                        <RowDefinition Height="Auto" />
-                    </Grid.RowDefinitions>
-                    <ListBox x:Name="TrashList" />
-                    <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,8,0,0">
-                        <Button Content="恢复" Width="100" Click="OnRestore" />
-                        <Button Content="永久删除" Width="100" Margin="8,0,0,0" Click="OnPurge" />
-                    </StackPanel>
-                </Grid>
-            </TabItem>
-            <TabItem Header="设备">
-                <Grid Margin="12">
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="*" />
-                        <RowDefinition Height="Auto" />
-                    </Grid.RowDefinitions>
-                    <ListBox x:Name="DeviceList" />
-                    <Button Grid.Row="1" Content="撤销选中设备" Width="140" HorizontalAlignment="Left" Margin="0,8,0,0" Click="OnRevoke" />
-                </Grid>
-            </TabItem>
-        </TabControl>
-    </DockPanel>
+            </DockPanel>
+        </Border>
+    </Grid>
 </Window>

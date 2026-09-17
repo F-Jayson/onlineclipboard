@@ -1,6 +1,6 @@
 # Android 客户端
 
-环境：JDK 17/21、Android SDK 36、Gradle 8.13（本仓库 Wrapper）或 8.13–9.5。AGP 8.13.2 与 Gradle 9.6+ 不兼容。
+环境：JDK 17/21、Android SDK 36、Gradle 9.7.1（本仓库 Wrapper）、AGP 9.4.0。
 
 ```powershell
 ./gradlew.bat :app:assembleDebug

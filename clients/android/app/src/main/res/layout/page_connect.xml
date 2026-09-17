@@ -1,0 +1,214 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp">
+
+        <TextView
+            style="@style/PageTitle"
+            android:text="连接与账号" />
+
+        <TextView
+            style="@style/PageSubtitle"
+            android:text="连接自托管服务器，登录后用恢复密钥解锁。" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@drawable/bg_card"
+            android:orientation="vertical"
+            android:padding="16dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="服务器"
+                android:textColor="@color/ink"
+                android:textSize="16sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:text="填写主机地址，不要带 /api 路径。非本机必须 HTTPS。"
+                android:textColor="@color/muted"
+                android:textSize="12sp" />
+
+            <TextView style="@style/FieldLabel" android:text="服务器地址" />
+
+            <EditText
+                android:id="@+id/originBox"
+                style="@style/FieldInput"
+                android:hint="https://clp.fjayson.com"
+                android:inputType="textUri" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:orientation="horizontal">
+
+                <Button
+                    android:id="@+id/btnTest"
+                    style="@style/PrimaryButton"
+                    android:layout_marginEnd="8dp"
+                    android:text="测试连接" />
+
+                <Button
+                    android:id="@+id/btnProbe"
+                    style="@style/GhostButton"
+                    android:text="能力检查" />
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/originStatus"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:textColor="@color/muted"
+                android:textSize="12sp" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:background="@drawable/bg_card"
+            android:orientation="vertical"
+            android:padding="16dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="账号"
+                android:textColor="@color/ink"
+                android:textSize="16sp"
+                android:textStyle="bold" />
+
+            <TextView style="@style/FieldLabel" android:layout_marginTop="8dp" android:text="用户名" />
+
+            <EditText
+                android:id="@+id/userBox"
+                style="@style/FieldInput"
+                android:inputType="text" />
+
+            <TextView style="@style/FieldLabel" android:text="密码（至少 12 位）" />
+
+            <EditText
+                android:id="@+id/passBox"
+                style="@style/FieldInput"
+                android:inputType="textPassword" />
+
+            <TextView style="@style/FieldLabel" android:text="邀请码（仅注册需要）" />
+
+            <EditText
+                android:id="@+id/inviteBox"
+                style="@style/FieldInput"
+                android:inputType="text" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="14dp"
+                android:orientation="horizontal">
+
+                <Button
+                    android:id="@+id/btnLogin"
+                    style="@style/PrimaryButton"
+                    android:layout_marginEnd="8dp"
+                    android:text="登录" />
+
+                <Button
+                    android:id="@+id/btnRegister"
+                    style="@style/SecondaryButton"
+                    android:text="注册" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:background="@drawable/bg_card"
+            android:orientation="vertical"
+            android:padding="16dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="保险库"
+                android:textColor="@color/ink"
+                android:textSize="16sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:text="登录密码不能解密历史。恢复密钥请离线保存。"
+                android:textColor="@color/muted"
+                android:textSize="12sp" />
+
+            <TextView style="@style/FieldLabel" android:text="恢复密钥" />
+
+            <EditText
+                android:id="@+id/recoveryBox"
+                style="@style/FieldInput"
+                android:gravity="top"
+                android:inputType="textMultiLine"
+                android:minLines="3"
+                android:singleLine="false"
+                android:fontFamily="monospace" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="14dp"
+                android:orientation="horizontal">
+
+                <Button
+                    android:id="@+id/btnUnlock"
+                    style="@style/PrimaryButton"
+                    android:layout_marginEnd="8dp"
+                    android:text="解锁保险库" />
+
+                <Button
+                    android:id="@+id/btnInitVault"
+                    style="@style/GhostButton"
+                    android:text="初始化" />
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/keyStatus"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:textColor="@color/muted"
+                android:textSize="12sp" />
+        </LinearLayout>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="14dp"
+            android:text="Android 10+ 仅在本窗口有焦点时读取剪贴板。后台实时同步未宣称支持。可通过系统分享或点“复制”同步。"
+            android:textColor="@color/muted"
+            android:textSize="12sp" />
+
+        <TextView
+            android:id="@+id/probeResult"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:layout_marginBottom="16dp"
+            android:textColor="@color/ink_soft"
+            android:textSize="12sp" />
+    </LinearLayout>
+</ScrollView>

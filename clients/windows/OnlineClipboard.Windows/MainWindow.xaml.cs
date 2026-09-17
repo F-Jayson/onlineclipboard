@@ -2,6 +2,7 @@ using System.IO;
 using System.Text;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Media;
 using OnlineClipboard.Windows.Core;
 
 namespace OnlineClipboard.Windows;
@@ -53,6 +54,7 @@ public partial class MainWindow : Window
             _session.DeviceName = "Windows";
         }
         SetStatus(_session.Cmk == null ? "请连接服务器并解锁保险库" : "已解锁，可同步");
+        ShowPage(0);
         RefreshLists();
         if (_session.Cmk != null && _api != null)
         {
@@ -304,8 +306,7 @@ public partial class MainWindow : Window
 
     private async void OnRevoke(object sender, RoutedEventArgs e)
     {
-        if (DeviceList.SelectedIndex < 0 || DeviceList.SelectedIndex >= _devices.Count || _api == null) return;
-        var d = _devices[DeviceList.SelectedIndex];
+        if (DeviceList.SelectedItem is not DeviceDto d || _api == null) return;
         try
         {
             await _api.RevokeDeviceAsync(d.Id, _cts.Token);
@@ -314,6 +315,45 @@ public partial class MainWindow : Window
         catch (Exception ex) { SetStatus(ex.Message); }
     }
 
+    private void OnNavConnect(object sender, RoutedEventArgs e) => ShowPage(0);
+    private void OnNavHistory(object sender, RoutedEventArgs e) => ShowPage(1);
+    private void OnNavTrash(object sender, RoutedEventArgs e) => ShowPage(2);
+    private void OnNavDevices(object sender, RoutedEventArgs e)
+    {
+        ShowPage(3);
+        _ = LoadDevices();
+    }
+
+    private void ShowPage(int index)
+    {
+        ConnectPage.Visibility = Vis(index == 0);
+        HistoryPage.Visibility = Vis(index == 1);
+        TrashPage.Visibility = Vis(index == 2);
+        DevicePage.Visibility = Vis(index == 3);
+        PageTitle.Text = index switch
+        {
+            0 => "连接与账号",
+            1 => "剪贴历史",
+            2 => "回收站",
+            _ => "已登录设备"
+        };
+        PageSubtitle.Text = index switch
+        {
+            0 => "连接自托管服务器，登录后用恢复密钥解锁",
+            1 => "明文只保存在这台电脑，服务器只有密文",
+            2 => "删除后 168 小时内可恢复，到期将从服务器清除",
+            _ => "撤销设备会立即切断该设备的同步会话"
+        };
+        MarkNav(NavConnect, index == 0);
+        MarkNav(NavHistory, index == 1);
+        MarkNav(NavTrash, index == 2);
+        MarkNav(NavDevices, index == 3);
+    }
+
+    private static Visibility Vis(bool on) => on ? Visibility.Visible : Visibility.Collapsed;
+
+    private static void MarkNav(Button button, bool on) => button.Tag = on ? "Active" : null;
+
     private async Task LoadDevices()
     {
         if (_api == null) return;
@@ -321,7 +361,8 @@ public partial class MainWindow : Window
         {
             var page = await _api.DevicesAsync(_cts.Token);
             _devices = page.Items;
-            DeviceList.ItemsSource = _devices.Select(d => $"{d.Name} ({d.Platform}) {(d.RevokedAt == null ? "" : "已撤销")}").ToList();
+            DeviceList.ItemsSource = _devices;
+            DeviceEmpty.Visibility = Vis(_devices.Count == 0);
         }
         catch { /* ignore */ }
     }
@@ -330,19 +371,26 @@ public partial class MainWindow : Window
     {
         if (_store == null) return;
         var q = SearchBox.Text?.Trim() ?? "";
+        SearchHint.Visibility = Vis(q.Length == 0);
         var active = _store.LoadClips("active");
         if (q.Length > 0 && _session.Cmk != null)
             active = active.Where(i => i.Text.Contains(q, StringComparison.OrdinalIgnoreCase)).ToList();
         HistoryList.ItemsSource = active;
-        TrashList.ItemsSource = _store.LoadClips("trash");
-        var n = active.Count;
-        if (q.Length > 0) SetStatus($"搜索已下载的 {n} 条");
+        var trash = _store.LoadClips("trash");
+        TrashList.ItemsSource = trash;
+        HistoryEmpty.Visibility = Vis(active.Count == 0);
+        TrashEmpty.Visibility = Vis(trash.Count == 0);
+        if (q.Length > 0) SetStatus($"搜索已下载的 {active.Count} 条");
     }
 
     private void SetStatus(string text)
     {
         StatusText.Text = text;
+        SidebarStatus.Text = text;
         _sync.Status = text;
+        StatusDot.Fill = new SolidColorBrush(_session.Cmk != null
+            ? Color.FromRgb(0x22, 0xC5, 0x5E)
+            : Color.FromRgb(0x94, 0xA3, 0xB8));
     }
 
     private void OnClosed(object? sender, EventArgs e)

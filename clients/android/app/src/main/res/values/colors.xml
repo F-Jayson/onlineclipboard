@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="ink">#FF0F172A</color>
+    <color name="ink_soft">#FF334155</color>
+    <color name="muted">#FF64748B</color>
+    <color name="line">#FFE2E8F0</color>
+    <color name="page">#FFF3F5FA</color>
+    <color name="card">#FFFFFFFF</color>
+    <color name="sidebar">#FF111827</color>
+    <color name="accent">#FF4F46E5</color>
+    <color name="accent_dark">#FF4338CA</color>
+    <color name="accent_soft">#FFEEF2FF</color>
+    <color name="danger">#FFDC2626</color>
+    <color name="danger_soft">#FFFEF2F2</color>
+    <color name="warning">#FFB45309</color>
+    <color name="on_accent">#FFFFFFFF</color>
+    <color name="sidebar_muted">#FF94A3B8</color>
+</resources>
