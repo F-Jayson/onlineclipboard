@@ -123,6 +123,45 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/RegisterRequest'
+  /api/v1/auth/email-code:
+    post:
+      operationId: requestEmailCode
+      summary: 发送邮箱注册验证码
+      x-implementation: implemented
+      responses:
+        '204':
+          description: 验证码已发送
+        default:
+          description: 统一错误体；参见 docs/06-api.md
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '400':
+          description: 具体业务错误码见接口设计
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: 具体业务错误码见接口设计
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: 具体业务错误码见接口设计
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmailCodeRequest'
   /api/v1/auth/login:
     post:
       operationId: login
@@ -374,6 +413,38 @@ paths:
               $ref: '#/components/schemas/VaultEnvelope'
       parameters:
       - $ref: '#/components/parameters/IfNoneMatch'
+  /api/v1/vault/password-wrap:
+    put:
+      operationId: putPasswordWrap
+      summary: 上传或替换密码包装信封
+      x-implementation: implemented
+      responses:
+        '204':
+          description: 已保存密码包装信封
+        default:
+          description: 统一错误体；参见 docs/06-api.md
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '400':
+          description: 具体业务错误码见接口设计
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: 具体业务错误码见接口设计
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PasswordWrap'
   /api/v1/clips:
     post:
       operationId: createClip
@@ -982,6 +1053,9 @@ components:
       - sync_available
       - e2ee_available
       - registration_mode
+      - email_verification
+      - min_password_chars
+      - password_wrap
       - max_text_bytes
       - max_request_bytes
       - trash_retention_seconds
@@ -1009,6 +1083,16 @@ components:
           - disabled
           - invite
           - open
+          - email
+          - external
+        email_verification:
+          type: boolean
+        min_password_chars:
+          type: integer
+        password_wrap:
+          type: boolean
+        external_register_url:
+          type: string
         max_text_bytes:
           type: integer
           example: 65536
@@ -1049,10 +1133,11 @@ components:
       properties:
         username:
           type: string
-          pattern: ^[a-z0-9_]{3,32}$
+          minLength: 1
+          maxLength: 190
         password:
           type: string
-          minLength: 12
+          minLength: 1
           maxLength: 128
           format: password
         device:
@@ -1064,7 +1149,6 @@ components:
       - username
       - password
       - device
-      - invite_token
       properties:
         username:
           type: string
@@ -1080,6 +1164,21 @@ components:
           type: string
           minLength: 1
           maxLength: 256
+        email:
+          type: string
+          format: email
+        email_code:
+          type: string
+          pattern: ^[0-9]{6}$
+    EmailCodeRequest:
+      type: object
+      additionalProperties: false
+      required:
+      - email
+      properties:
+        email:
+          type: string
+          format: email
     TokenPair:
       type: object
       additionalProperties: false
@@ -1243,6 +1342,57 @@ components:
           type: integer
           enum:
           - 1
+        wrap_salt:
+          type: string
+          pattern: ^[A-Za-z0-9_-]+$
+          minLength: 43
+          maxLength: 43
+        wrap_nonce:
+          type: string
+          pattern: ^[A-Za-z0-9_-]+$
+          minLength: 16
+          maxLength: 16
+        wrapped_key:
+          type: string
+          pattern: ^[A-Za-z0-9_-]+$
+          minLength: 64
+          maxLength: 64
+        password_wrap:
+          $ref: '#/components/schemas/PasswordWrap'
+    PasswordWrap:
+      type: object
+      additionalProperties: false
+      required:
+      - kdf
+      - time
+      - memory
+      - parallelism
+      - kdf_salt
+      - wrap_salt
+      - wrap_nonce
+      - wrapped_key
+      properties:
+        kdf:
+          type: string
+          enum:
+          - argon2id
+        time:
+          type: integer
+          minimum: 1
+          maximum: 10
+        memory:
+          type: integer
+          minimum: 8192
+          maximum: 262144
+        parallelism:
+          type: integer
+          minimum: 1
+          maximum: 4
+        kdf_salt:
+          type: string
+          pattern: ^[A-Za-z0-9_-]+$
+          minLength: 22
+          maxLength: 22
         wrap_salt:
           type: string
           pattern: ^[A-Za-z0-9_-]+$

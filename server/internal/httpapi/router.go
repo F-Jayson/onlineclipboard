@@ -45,6 +45,7 @@ func New(cfg config.Config, st *store.Store, hub *notify.Hub, ready bool) http.H
 	mux.HandleFunc("GET /readyz", h.readyz)
 	mux.HandleFunc("GET /api/v1/server-info", h.serverInfo)
 	mux.HandleFunc("POST /api/v1/auth/register", h.register)
+	mux.HandleFunc("POST /api/v1/auth/email-code", h.emailCode)
 	mux.HandleFunc("POST /api/v1/auth/login", h.login)
 	mux.HandleFunc("POST /api/v1/auth/refresh", h.refresh)
 	mux.HandleFunc("POST /api/v1/auth/logout", h.auth(h.logout))
@@ -53,6 +54,7 @@ func New(cfg config.Config, st *store.Store, hub *notify.Hub, ready bool) http.H
 	mux.HandleFunc("DELETE /api/v1/devices/{id}", h.auth(h.revokeDevice))
 	mux.HandleFunc("GET /api/v1/vault", h.auth(h.getVault))
 	mux.HandleFunc("PUT /api/v1/vault", h.auth(h.putVault))
+	mux.HandleFunc("PUT /api/v1/vault/password-wrap", h.auth(h.putPasswordWrap))
 	mux.HandleFunc("POST /api/v1/clips", h.auth(h.createClip))
 	mux.HandleFunc("GET /api/v1/clips", h.auth(h.listClips))
 	mux.HandleFunc("GET /api/v1/clips/{id}", h.auth(h.getClip))
@@ -99,15 +101,22 @@ func (h *Handler) serverInfo(w http.ResponseWriter, r *http.Request) {
 		stage = "ready"
 		syncOn = true
 	}
-	writeJSON(w, http.StatusOK, map[string]any{
+	info := map[string]any{
 		"name": "OnlineClipboard", "version": "0.1.0",
 		"stage": stage, "protocol_version": 1,
 		"sync_available": syncOn, "e2ee_available": syncOn,
 		"registration_mode":       h.cfg.RegistrationMode,
+		"email_verification":      h.cfg.EmailVerification(),
+		"min_password_chars":      h.cfg.MinPasswordChars(),
+		"password_wrap":           true,
 		"max_text_bytes":          h.cfg.MaxTextBytes,
 		"max_request_bytes":       h.cfg.MaxRequestBytes,
 		"trash_retention_seconds": 604800,
-	})
+	}
+	if h.cfg.ExternalRegisterURL != "" {
+		info["external_register_url"] = h.cfg.ExternalRegisterURL
+	}
+	writeJSON(w, http.StatusOK, info)
 }
 
 func (h *Handler) register(w http.ResponseWriter, r *http.Request) {
@@ -118,6 +127,8 @@ func (h *Handler) register(w http.ResponseWriter, r *http.Request) {
 		Username    string `json:"username"`
 		Password    string `json:"password"`
 		InviteToken string `json:"invite_token"`
+		Email       string `json:"email"`
+		EmailCode   string `json:"email_code"`
 		Device      struct {
 			ID       string `json:"id"`
 			Name     string `json:"name"`
@@ -143,6 +154,7 @@ func (h *Handler) register(w http.ResponseWriter, r *http.Request) {
 	defer func() { <-h.argon }()
 	result, err := h.store.Register(r.Context(), store.RegisterInput{
 		Username: body.Username, Password: body.Password, InviteToken: body.InviteToken,
+		Email: body.Email, EmailCode: body.EmailCode,
 		DeviceID: body.Device.ID, DeviceName: body.Device.Name, Platform: body.Device.Platform,
 	})
 	if err != nil {
@@ -171,7 +183,11 @@ func (h *Handler) login(w http.ResponseWriter, r *http.Request) {
 	if !h.gateKey(w, "u:"+body.Username, 5) {
 		return
 	}
-	if err := canon.Username(body.Username); err != nil || canon.Password(body.Password) != nil {
+	if err := canon.LoginIdentifier(body.Username); err != nil || canon.LoginSecret(body.Password) != nil {
+		writeError(w, apperr.New(http.StatusUnauthorized, apperr.Unauthenticated, "用户名或密码不正确。"))
+		return
+	}
+	if h.cfg.RegistrationMode != "external" && canon.Password(body.Password) != nil {
 		writeError(w, apperr.New(http.StatusUnauthorized, apperr.Unauthenticated, "用户名或密码不正确。"))
 		return
 	}
@@ -313,12 +329,89 @@ func (h *Handler) putVault(w http.ResponseWriter, r *http.Request, scope store.S
 		writeError(w, apperr.New(http.StatusBadRequest, apperr.InvalidRequest, "wrapped_key 无效。"))
 		return
 	}
-	if err := h.store.InitVault(r.Context(), scope, env, salt, nonce, wrapped); err != nil {
+	pw, perr := parsePasswordWrap(env.PasswordWrap)
+	if perr != nil {
+		writeError(w, perr)
+		return
+	}
+	if err := h.store.InitVault(r.Context(), scope, env, salt, nonce, wrapped, pw); err != nil {
 		writeErr(w, err)
 		return
 	}
 	writeJSON(w, http.StatusCreated, env)
 }
+
+func (h *Handler) emailCode(w http.ResponseWriter, r *http.Request) {
+	if !h.gateIP(w, r, 5) {
+		return
+	}
+	var body struct {
+		Email string `json:"email"`
+	}
+	if !decodeJSON(w, r, &body) {
+		return
+	}
+	if err := h.store.RequestEmailCode(r.Context(), body.Email); err != nil {
+		writeErr(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h *Handler) putPasswordWrap(w http.ResponseWriter, r *http.Request, scope store.Scope) {
+	var wrap store.PasswordWrap
+	if !decodeJSON(w, r, &wrap) {
+		return
+	}
+	pw, perr := parsePasswordWrap(&wrap)
+	if perr != nil {
+		writeError(w, perr)
+		return
+	}
+	if pw == nil {
+		writeError(w, apperr.New(http.StatusBadRequest, apperr.InvalidRequest, "password wrap 无效。"))
+		return
+	}
+	if err := h.store.PutPasswordWrap(r.Context(), scope, *pw); err != nil {
+		writeErr(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func parsePasswordWrap(pw *store.PasswordWrap) (*store.PasswordWrapRaw, *apperr.Error) {
+	if pw == nil {
+		return nil, nil
+	}
+	if pw.KDF != clipcryptoKDF {
+		return nil, apperr.New(http.StatusBadRequest, apperr.InvalidRequest, "password wrap kdf 无效。")
+	}
+	if pw.Time < 1 || pw.Time > 10 || pw.Memory < 8192 || pw.Memory > 262144 || pw.Parallelism < 1 || pw.Parallelism > 4 {
+		return nil, apperr.New(http.StatusBadRequest, apperr.InvalidRequest, "password wrap 参数无效。")
+	}
+	kdfSalt, err := canon.Decode(pw.KDFSalt, 16)
+	if err != nil {
+		return nil, apperr.New(http.StatusBadRequest, apperr.InvalidRequest, "password kdf_salt 无效。")
+	}
+	salt, err := canon.Decode(pw.WrapSalt, 32)
+	if err != nil {
+		return nil, apperr.New(http.StatusBadRequest, apperr.InvalidRequest, "password wrap_salt 无效。")
+	}
+	nonce, err := canon.Decode(pw.WrapNonce, 12)
+	if err != nil {
+		return nil, apperr.New(http.StatusBadRequest, apperr.InvalidRequest, "password wrap_nonce 无效。")
+	}
+	wrapped, err := canon.Decode(pw.WrappedKey, 48)
+	if err != nil {
+		return nil, apperr.New(http.StatusBadRequest, apperr.InvalidRequest, "password wrapped_key 无效。")
+	}
+	return &store.PasswordWrapRaw{
+		KDF: pw.KDF, Time: pw.Time, Memory: pw.Memory, Parallelism: pw.Parallelism,
+		KDFSalt: kdfSalt, WrapSalt: salt, WrapNonce: nonce, WrappedKey: wrapped,
+	}, nil
+}
+
+const clipcryptoKDF = "argon2id"
 
 func (h *Handler) createClip(w http.ResponseWriter, r *http.Request, scope store.Scope) {
 	var env store.Envelope

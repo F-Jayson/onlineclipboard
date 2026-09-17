@@ -39,6 +39,9 @@ public sealed class ApiClient : IDisposable
     public Task<AuthResult> RegisterAsync(object body, CancellationToken ct) =>
         SendAsync<AuthResult>(HttpMethod.Post, "api/v1/auth/register", body, ct, expected: 201);
 
+    public Task RequestEmailCodeAsync(string email, CancellationToken ct) =>
+        SendAsync(HttpMethod.Post, "api/v1/auth/email-code", new { email }, ct, 204);
+
     public Task<AuthResult> LoginAsync(object body, CancellationToken ct) =>
         SendAsync<AuthResult>(HttpMethod.Post, "api/v1/auth/login", body, ct);
 
@@ -51,6 +54,9 @@ public sealed class ApiClient : IDisposable
 
     public Task<VaultEnvelope> PutVaultAsync(VaultEnvelope env, CancellationToken ct) =>
         SendAsync<VaultEnvelope>(HttpMethod.Put, "api/v1/vault", env, ct, 201, new Dictionary<string, string> { ["If-None-Match"] = "*" });
+
+    public Task PutPasswordWrapAsync(PasswordWrap wrap, CancellationToken ct) =>
+        SendAsync(HttpMethod.Put, "api/v1/vault/password-wrap", wrap, ct, 204);
 
     public Task<MutationReceipt> CreateClipAsync(ClipEnvelope env, CancellationToken ct) =>
         SendAsync<MutationReceipt>(HttpMethod.Post, "api/v1/clips", env, ct, 0);

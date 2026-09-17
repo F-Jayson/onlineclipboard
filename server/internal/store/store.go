@@ -14,14 +14,18 @@ import (
 	"onlineclipboard/server/internal/apperr"
 	"onlineclipboard/server/internal/canon"
 	"onlineclipboard/server/internal/config"
+	"onlineclipboard/server/internal/extauth"
+	"onlineclipboard/server/internal/mailer"
 	"onlineclipboard/server/internal/notify"
 	"onlineclipboard/server/internal/passwd"
 )
 
 type Store struct {
-	Pool *pgxpool.Pool
-	Cfg  config.Config
-	Hub  *notify.Hub
+	Pool     *pgxpool.Pool
+	Cfg      config.Config
+	Hub      *notify.Hub
+	Mailer   mailer.Sender
+	External extauth.Verifier
 }
 
 func New(pool *pgxpool.Pool, cfg config.Config, hub *notify.Hub) *Store {

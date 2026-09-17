@@ -113,3 +113,71 @@ func TestVectors(t *testing.T) {
 		}
 	}
 }
+
+func TestPasswordWrapVector(t *testing.T) {
+	raw, err := os.ReadFile(filepath.Join("..", "..", "..", "contracts", "crypto-v1-vectors.json"))
+	if err != nil {
+		raw, err = os.ReadFile(filepath.Join("..", "..", "..", "..", "contracts", "crypto-v1-vectors.json"))
+	}
+	if err != nil {
+		wd, _ := os.Getwd()
+		raw, err = os.ReadFile(filepath.Join(wd, "..", "..", "..", "..", "contracts", "crypto-v1-vectors.json"))
+	}
+	if err != nil {
+		t.Fatal(err)
+	}
+	var fix struct {
+		UserID   string `json:"user_id"`
+		CMKHex   string `json:"cmk_hex"`
+		Password string `json:"password_wrap_password"`
+		Vault    struct {
+			VaultID string `json:"vault_id"`
+		} `json:"vault_envelope"`
+		PasswordWrap struct {
+			KDF         string `json:"kdf"`
+			Time        int    `json:"time"`
+			Memory      int    `json:"memory"`
+			Parallelism int    `json:"parallelism"`
+			KDFSalt     string `json:"kdf_salt"`
+			WrapSalt    string `json:"wrap_salt"`
+			WrapNonce   string `json:"wrap_nonce"`
+			WrapKeyHex  string `json:"wrap_key_hex"`
+			WrappedKey  string `json:"wrapped_key"`
+		} `json:"password_wrap"`
+	}
+	if err := json.Unmarshal(raw, &fix); err != nil {
+		t.Fatal(err)
+	}
+	if fix.Password == "" || fix.PasswordWrap.WrappedKey == "" {
+		t.Fatal("password wrap vector missing")
+	}
+	cmk, _ := hex.DecodeString(fix.CMKHex)
+	kdfSalt, err := clipcrypto.Decode(fix.PasswordWrap.KDFSalt)
+	if err != nil {
+		t.Fatal(err)
+	}
+	wrapSalt, _ := clipcrypto.Decode(fix.PasswordWrap.WrapSalt)
+	nonce, _ := clipcrypto.Decode(fix.PasswordWrap.WrapNonce)
+	ikm := clipcrypto.PasswordIKM(fix.Password, kdfSalt, uint32(fix.PasswordWrap.Time), uint32(fix.PasswordWrap.Memory), uint8(fix.PasswordWrap.Parallelism))
+	kek, err := clipcrypto.Derive(ikm, wrapSalt, []byte(clipcrypto.PasswordWrapInfo))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if hex.EncodeToString(kek) != fix.PasswordWrap.WrapKeyHex {
+		t.Fatalf("password wrap key %s", hex.EncodeToString(kek))
+	}
+	got, err := clipcrypto.WrapCMKWithPassword(fix.Password, kdfSalt, wrapSalt, nonce, cmk, fix.UserID, fix.Vault.VaultID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if clipcrypto.Encode(got) != fix.PasswordWrap.WrappedKey {
+		t.Fatalf("password wrapped key mismatch got %s", clipcrypto.Encode(got))
+	}
+	opened, err := clipcrypto.UnwrapCMKWithPassword(fix.Password, kdfSalt, wrapSalt, nonce, got, fix.UserID, fix.Vault.VaultID, uint32(fix.PasswordWrap.Time), uint32(fix.PasswordWrap.Memory), uint8(fix.PasswordWrap.Parallelism))
+	if err != nil || hex.EncodeToString(opened) != fix.CMKHex {
+		t.Fatalf("password unwrap")
+	}
+	if _, err := clipcrypto.UnwrapCMKWithPassword("wrong-password-12", kdfSalt, wrapSalt, nonce, got, fix.UserID, fix.Vault.VaultID, uint32(fix.PasswordWrap.Time), uint32(fix.PasswordWrap.Memory), uint8(fix.PasswordWrap.Parallelism)); err == nil {
+		t.Fatalf("wrong password must fail")
+	}
+}

@@ -6,6 +6,18 @@
   "recovery_key_hex": "202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f",
   "recovery_code": "oc1_ICEiIyQlJicoKSorLC0uLzAxMjM0NTY3ODk6Ozw9Pj8",
   "wrap_key_hex": "3470a29e486aca4d26030cc9b0d69bdaca3d2a7600b9459127a1daeb26380346",
+  "password_wrap_password": "correct-horse-battery",
+  "password_wrap": {
+    "kdf": "argon2id",
+    "time": 3,
+    "memory": 65536,
+    "parallelism": 1,
+    "kdf_salt": "UFFSU1RVVldYWVpbXF1eXw",
+    "wrap_salt": "YGFiY2RlZmdoaWprbG1ub3BxcnN0dXZ3eHl6e3x9fn8",
+    "wrap_nonce": "ICEiIyQlJicoKSor",
+    "wrap_key_hex": "914a520a081896850c5fbca1f0b19208c8e468e3bffe2f40349726963074897a",
+    "wrapped_key": "7p7EKbLUKnRTP1GP55z4WVVGJerHSRky3DTAzMqEjlAC5qMXJ4e-40IK3si8hg8u"
+  },
   "vault_envelope": {
     "vault_id": "22222222-2222-4222-8222-222222222222",
     "format_version": 1,

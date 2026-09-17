@@ -1,7 +1,7 @@
 # 协议契约
 
-- [openapi.yaml](openapi.yaml)：22 个 HTTP 操作的契约。`x-implementation: implemented` 表示服务端已提供对应路由。
-- [crypto-v1-vectors.json](crypto-v1-vectors.json)：用于后续 Windows/Android 独立实现互通的固定参考输入和输出。
+- [openapi.yaml](openapi.yaml)：24 个 HTTP 操作的契约。`x-implementation: implemented` 表示服务端已提供对应路由。
+- [crypto-v1-vectors.json](crypto-v1-vectors.json)：用于后续 Windows/Android 独立实现互通的固定参考输入和输出，含 RK 包装与登录密码包装。
 - [加密规范](../docs/03-security.md)、[同步规范](../docs/04-sync-protocol.md) 约束跨字段语义；不能只按 JSON 字段名实现。
 
 ## 向量使用

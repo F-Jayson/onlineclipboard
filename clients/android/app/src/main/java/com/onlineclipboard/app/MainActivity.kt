@@ -5,6 +5,7 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -21,6 +22,7 @@ import com.onlineclipboard.app.core.ApiError
 import com.onlineclipboard.app.core.AppSession
 import com.onlineclipboard.app.core.CryptoV1
 import com.onlineclipboard.app.core.HistoryItem
+import com.onlineclipboard.app.core.PasswordWrap
 import com.onlineclipboard.app.core.LocalStore
 import com.onlineclipboard.app.core.Origins
 import com.onlineclipboard.app.core.SyncEngine
@@ -47,7 +49,16 @@ class MainActivity : Activity() {
     private lateinit var userBox: EditText
     private lateinit var passBox: EditText
     private lateinit var inviteBox: EditText
+    private lateinit var emailBox: EditText
+    private lateinit var emailCodeBox: EditText
     private lateinit var recoveryBox: EditText
+    private lateinit var userLabel: TextView
+    private lateinit var passLabel: TextView
+    private lateinit var emailPanel: View
+    private lateinit var invitePanel: View
+    private lateinit var registerHint: TextView
+    private lateinit var registerBtn: View
+    private var serverInfo: JSONObject? = null
     private lateinit var originStatus: TextView
     private lateinit var keyStatus: TextView
     private lateinit var searchBox: EditText
@@ -191,7 +202,15 @@ class MainActivity : Activity() {
         userBox = findViewById(R.id.userBox)
         passBox = findViewById(R.id.passBox)
         inviteBox = findViewById(R.id.inviteBox)
+        emailBox = findViewById(R.id.emailBox)
+        emailCodeBox = findViewById(R.id.emailCodeBox)
         recoveryBox = findViewById(R.id.recoveryBox)
+        userLabel = findViewById(R.id.userLabel)
+        passLabel = findViewById(R.id.passLabel)
+        emailPanel = findViewById(R.id.emailPanel)
+        invitePanel = findViewById(R.id.invitePanel)
+        registerHint = findViewById(R.id.registerHint)
+        registerBtn = findViewById(R.id.btnRegister)
         originStatus = findViewById(R.id.originStatus)
         keyStatus = findViewById(R.id.keyStatus)
         searchBox = findViewById(R.id.searchBox)
@@ -234,7 +253,9 @@ class MainActivity : Activity() {
         findViewById<View>(R.id.btnTest).setOnClickListener { testOrigin() }
         findViewById<View>(R.id.btnProbe).setOnClickListener { probe() }
         findViewById<View>(R.id.btnLogin).setOnClickListener { auth(false) }
-        findViewById<View>(R.id.btnRegister).setOnClickListener { auth(true) }
+        registerBtn.setOnClickListener { auth(true) }
+        findViewById<View>(R.id.btnSendCode).setOnClickListener { sendEmailCode() }
+        registerHint.setOnClickListener { openRegister() }
         findViewById<View>(R.id.btnUnlock).setOnClickListener { unlock() }
         findViewById<View>(R.id.btnInitVault).setOnClickListener { initVault() }
         findViewById<View>(R.id.btnSync).setOnClickListener { syncNow() }
@@ -248,6 +269,14 @@ class MainActivity : Activity() {
         tabTrash.setOnClickListener { showPage(2) }
         tabDevices.setOnClickListener { showPage(3) }
         showPage(0)
+        if (api != null) {
+            bg {
+                runCatching {
+                    val info = api!!.serverInfo()
+                    main.post { serverInfo = info; applyAuthMode(info) }
+                }
+            }
+        }
     }
 
     private fun showPage(idx: Int) {
@@ -278,6 +307,8 @@ class MainActivity : Activity() {
                 val origin = Origins.normalize(originBox.text.toString())
                 val info = ApiClient(origin).serverInfo()
                 main.post {
+                    serverInfo = info
+                    applyAuthMode(info)
                     originStatus.text = if (info.optBoolean("sync_available"))
                         "已连接 ${info.optString("name")} ${info.optString("version")}，注册模式 ${info.optString("registration_mode")}"
                     else "服务器尚未就绪（stage=${info.optString("stage")}）"
@@ -322,16 +353,55 @@ class MainActivity : Activity() {
         }
     }
 
+    private fun applyAuthMode(info: JSONObject?) {
+        val mode = info?.optString("registration_mode").orEmpty()
+        emailPanel.visibility = if (mode == "email") View.VISIBLE else View.GONE
+        invitePanel.visibility = if (mode.isEmpty() || mode == "invite") View.VISIBLE else View.GONE
+        registerBtn.visibility = if (mode == "external" || mode == "disabled") View.GONE else View.VISIBLE
+        val registerUrl = info?.optString("external_register_url").orEmpty()
+        registerHint.visibility = if (mode == "external" && registerUrl.isNotEmpty()) View.VISIBLE else View.GONE
+        val min = info?.optInt("min_password_chars") ?: 12
+        passLabel.text = if (min <= 1) "密码" else "密码（至少 $min 位）"
+        userLabel.text = if (mode == "external") "站点账号或邮箱" else "用户名或邮箱"
+    }
+
+    private fun sendEmailCode() {
+        bg {
+            try {
+                val origin = Origins.normalize(originBox.text.toString())
+                ApiClient(origin).requestEmailCode(emailBox.text.toString().trim())
+                main.post { setStatus("验证码已发送，请查收邮箱。") }
+            } catch (ex: Exception) {
+                main.post { setStatus(ex.message ?: "发送失败") }
+            }
+        }
+    }
+
+    private fun openRegister() {
+        val url = serverInfo?.optString("external_register_url").orEmpty()
+        if (url.isEmpty()) return
+        startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+    }
+
     private fun auth(register: Boolean) {
         bg {
             try {
                 val origin = Origins.normalize(originBox.text.toString())
+                val password = passBox.text.toString()
                 val client = ApiClient(origin)
+                runCatching {
+                    val info = client.serverInfo()
+                    main.post { serverInfo = info; applyAuthMode(info) }
+                }
+                val previousUser = session.userId
+                val previousCmk = session.cmk
+                val previousVault = session.vaultId
                 val result = if (register) client.register(
-                    userBox.text.toString().trim(), passBox.text.toString(),
-                    inviteBox.text.toString().trim(), session.deviceId, session.deviceName
+                    userBox.text.toString().trim(), password,
+                    inviteBox.text.toString().trim(), session.deviceId, session.deviceName,
+                    emailBox.text.toString().trim(), emailCodeBox.text.toString().trim()
                 ) else client.login(
-                    userBox.text.toString().trim(), passBox.text.toString(),
+                    userBox.text.toString().trim(), password,
                     session.deviceId, session.deviceName
                 )
                 session.origin = origin
@@ -339,14 +409,22 @@ class MainActivity : Activity() {
                 session.deviceId = result.getString("device_id")
                 session.accessToken = result.getString("access_token")
                 session.refreshToken = result.getString("refresh_token")
+                if (session.userId != previousUser) {
+                    session.cmk = null
+                    session.vaultId = ""
+                    session.syncEpoch = ""
+                    session.cursor = "0"
+                    store.clearUserData()
+                } else {
+                    session.cmk = previousCmk
+                    session.vaultId = previousVault
+                }
                 client.accessToken = session.accessToken
                 api = client
                 sync = SyncEngine(client, store, session)
                 store.set("username", userBox.text.toString().trim())
                 session.persist(store)
-                main.post {
-                    setStatus(if (result.optBoolean("vault_initialized")) "已登录，请输入恢复密钥解锁" else "已登录，请初始化保险库")
-                }
+                unlockAfterAuth(password, result.optBoolean("vault_initialized"))
             } catch (ex: Exception) {
                 main.post { setStatus(ex.message ?: "认证失败") }
             }
@@ -354,31 +432,11 @@ class MainActivity : Activity() {
     }
 
     private fun initVault() {
-        val client = api ?: return setStatus("请先登录")
+        if (api == null) return setStatus("请先登录")
+        if (passBox.text.toString().isEmpty()) return setStatus("请先填写登录密码，再初始化保险库。")
         bg {
             try {
-                val cmk = CryptoV1.random(32)
-                val rk = CryptoV1.random(32)
-                val salt = CryptoV1.random(32)
-                val nonce = CryptoV1.random(12)
-                val vaultId = CryptoV1.uuid()
-                val wrapped = CryptoV1.wrapCmk(rk, salt, nonce, cmk, session.userId, vaultId)
-                val env = JSONObject()
-                    .put("vault_id", vaultId).put("format_version", 1).put("key_epoch", 1)
-                    .put("wrap_salt", CryptoV1.encode(salt)).put("wrap_nonce", CryptoV1.encode(nonce))
-                    .put("wrapped_key", CryptoV1.encode(wrapped))
-                client.putVault(env)
-                session.vaultId = vaultId
-                session.cmk = cmk
-                session.persist(store)
-                val code = CryptoV1.recoveryCode(rk)
-                main.post {
-                    recoveryBox.setText(code)
-                    keyStatus.text = "请离线保存恢复密钥。登录密码不能解密历史。"
-                    setStatus("保险库已初始化")
-                    Toast.makeText(this, "请立即抄写恢复密钥", Toast.LENGTH_LONG).show()
-                    flushPendingShare()
-                }
+                initVaultWithPassword(passBox.text.toString(), showRecovery = true)
             } catch (ex: Exception) {
                 main.post { setStatus(ex.message ?: "初始化失败") }
             }
@@ -389,26 +447,19 @@ class MainActivity : Activity() {
         val client = api ?: return setStatus("请先登录")
         bg {
             try {
-                val vault = client.getVault()
-                val rk = CryptoV1.parseRecovery(recoveryBox.text.toString())
-                val cmk = CryptoV1.unwrapCmk(
-                    rk,
-                    CryptoV1.decode(vault.getString("wrap_salt")),
-                    CryptoV1.decode(vault.getString("wrap_nonce")),
-                    CryptoV1.decode(vault.getString("wrapped_key")),
-                    session.userId,
-                    vault.getString("vault_id")
-                )
-                session.vaultId = vault.getString("vault_id")
-                session.cmk = cmk
-                session.persist(store)
-                sync?.session = session
-                sync?.runOnce(::writeRemote)
-                main.post {
-                    keyStatus.text = "已解锁"
-                    setStatus("已解锁，开始同步")
-                    refreshHistory()
-                    flushPendingShare()
+                unlockAfterAuth(passBox.text.toString(), vaultInitialized = true)
+                if (session.cmk == null) {
+                    val vault = client.getVault()
+                    val rk = CryptoV1.parseRecovery(recoveryBox.text.toString())
+                    val cmk = CryptoV1.unwrapCmk(
+                        rk,
+                        CryptoV1.decode(vault.getString("wrap_salt")),
+                        CryptoV1.decode(vault.getString("wrap_nonce")),
+                        CryptoV1.decode(vault.getString("wrapped_key")),
+                        session.userId,
+                        vault.getString("vault_id")
+                    )
+                    finishUnlock(cmk, vault, passBox.text.toString())
                 }
             } catch (ex: Exception) {
                 main.post {
@@ -418,6 +469,141 @@ class MainActivity : Activity() {
             }
         }
     }
+
+    private fun unlockAfterAuth(password: String, vaultInitialized: Boolean) {
+        val client = api ?: return
+        if (!vaultInitialized) {
+            if (password.isEmpty()) {
+                main.post { setStatus("已登录，请填写密码后初始化保险库") }
+                return
+            }
+            initVaultWithPassword(password, showRecovery = true)
+            return
+        }
+        val vault = try {
+            client.getVault()
+        } catch (ex: ApiError) {
+            if (ex.code == "VAULT_NOT_INITIALIZED") {
+                if (password.isEmpty()) {
+                    main.post { setStatus("已登录，请初始化保险库") }
+                    return
+                }
+                initVaultWithPassword(password, showRecovery = true)
+                return
+            }
+            throw ex
+        }
+        var cmk: ByteArray? = null
+        if (session.cmk != null && session.vaultId == vault.optString("vault_id")) cmk = session.cmk
+        if (cmk == null && vault.has("password_wrap") && vault.get("password_wrap") != JSONObject.NULL && password.isNotEmpty()) {
+            try { cmk = unwrapPassword(vault, password) } catch (_: Exception) { }
+        }
+        if (cmk == null && recoveryBox.text.toString().isNotBlank()) {
+            try {
+                val rk = CryptoV1.parseRecovery(recoveryBox.text.toString())
+                cmk = CryptoV1.unwrapCmk(
+                    rk,
+                    CryptoV1.decode(vault.getString("wrap_salt")),
+                    CryptoV1.decode(vault.getString("wrap_nonce")),
+                    CryptoV1.decode(vault.getString("wrapped_key")),
+                    session.userId,
+                    vault.getString("vault_id")
+                )
+            } catch (_: Exception) { }
+        }
+        if (cmk == null) {
+            main.post { setStatus("已登录。新设备请输入恢复密钥解锁，之后即可用登录密码打开历史。") }
+            return
+        }
+        finishUnlock(cmk, vault, password)
+    }
+
+    private fun initVaultWithPassword(password: String, showRecovery: Boolean) {
+        val client = api ?: return
+        val cmk = CryptoV1.random(32)
+        val rk = CryptoV1.random(32)
+        val salt = CryptoV1.random(32)
+        val nonce = CryptoV1.random(12)
+        val vaultId = CryptoV1.uuid()
+        val wrapped = CryptoV1.wrapCmk(rk, salt, nonce, cmk, session.userId, vaultId)
+        val pw = CryptoV1.makePasswordWrap(password, cmk, session.userId, vaultId)
+        val env = JSONObject()
+            .put("vault_id", vaultId).put("format_version", 1).put("key_epoch", 1)
+            .put("wrap_salt", CryptoV1.encode(salt)).put("wrap_nonce", CryptoV1.encode(nonce))
+            .put("wrapped_key", CryptoV1.encode(wrapped))
+            .put("password_wrap", wrapJson(pw))
+        client.putVault(env)
+        session.vaultId = vaultId
+        session.cmk = cmk
+        session.persist(store)
+        val code = CryptoV1.recoveryCode(rk)
+        sync?.runOnce(::writeRemote)
+        main.post {
+            recoveryBox.setText(code)
+            keyStatus.text = "请离线保存恢复密钥。之后登录即可用密码解锁。"
+            setStatus("保险库已初始化并解锁")
+            if (showRecovery) {
+                android.app.AlertDialog.Builder(this)
+                    .setTitle("恢复密钥")
+                    .setMessage("请立即抄写并离线保存（密码丢失时用来恢复）：\n\n$code")
+                    .setPositiveButton("已保存", null)
+                    .show()
+            }
+            refreshHistory()
+            flushPendingShare()
+        }
+    }
+
+    private fun finishUnlock(cmk: ByteArray, vault: JSONObject, password: String) {
+        val client = api ?: return
+        session.vaultId = vault.getString("vault_id")
+        session.cmk = cmk
+        session.persist(store)
+        sync?.session = session
+        if (password.isNotEmpty()) {
+            var wrapOk = false
+            if (vault.has("password_wrap") && vault.get("password_wrap") != JSONObject.NULL) {
+                try { unwrapPassword(vault, password); wrapOk = true } catch (_: Exception) { wrapOk = false }
+            }
+            if (!wrapOk) {
+                val pw = CryptoV1.makePasswordWrap(password, cmk, session.userId, session.vaultId)
+                client.putPasswordWrap(wrapJson(pw))
+            }
+        }
+        sync?.runOnce(::writeRemote)
+        main.post {
+            keyStatus.text = "已解锁"
+            setStatus("已解锁，开始同步")
+            refreshHistory()
+            flushPendingShare()
+        }
+    }
+
+    private fun unwrapPassword(vault: JSONObject, password: String): ByteArray {
+        val wrap = vault.getJSONObject("password_wrap")
+        return CryptoV1.unwrapCmkWithPassword(
+            password,
+            CryptoV1.decode(wrap.getString("kdf_salt")),
+            CryptoV1.decode(wrap.getString("wrap_salt")),
+            CryptoV1.decode(wrap.getString("wrap_nonce")),
+            CryptoV1.decode(wrap.getString("wrapped_key")),
+            session.userId,
+            vault.getString("vault_id"),
+            wrap.optInt("time", 3),
+            wrap.optInt("memory", 65536),
+            wrap.optInt("parallelism", 1)
+        )
+    }
+
+    private fun wrapJson(pw: PasswordWrap): JSONObject = JSONObject()
+        .put("kdf", pw.kdf)
+        .put("time", pw.time)
+        .put("memory", pw.memory)
+        .put("parallelism", pw.parallelism)
+        .put("kdf_salt", pw.kdfSalt)
+        .put("wrap_salt", pw.wrapSalt)
+        .put("wrap_nonce", pw.wrapNonce)
+        .put("wrapped_key", pw.wrappedKey)
 
     private fun flushPendingShare() {
         val pending = store.getString("pending_share") ?: return

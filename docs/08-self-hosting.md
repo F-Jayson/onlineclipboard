@@ -79,7 +79,11 @@ Windows 由用户/管理员按范围导入信任根；Android 现代应用不默
 | CLIP_HTTP_ADDR | 默认 `127.0.0.1:8080`；容器内 `0.0.0.0:8080` |
 | CLIP_DATABASE_URL | PostgreSQL DSN，必填（也可用 CLIP_DATABASE_URL_FILE） |
 | CLIP_DATABASE_URL_FILE | 容器 secret 文件，包含 PostgreSQL DSN；日志隐藏 |
-| CLIP_REGISTRATION_MODE | invite 默认；disabled 关闭新注册；open 必须显式开启 |
+| CLIP_REGISTRATION_MODE | invite 默认；disabled 关闭新注册；open 受信开发环境；email 邮箱验证码；external 使用外部站点账号登录 |
+| CLIP_EXTERNAL_AUTH_URL | `external` 模式必填，例如 `https://blog.example.com/api/auth/verify-password` |
+| CLIP_EXTERNAL_REGISTER_URL | 可选，客户端“去站点注册”链接 |
+| CLIP_EMAIL_BACKEND | `smtp` 或 `log`；`email` 模式需要 SMTP 或 log |
+| CLIP_SMTP_HOST / PORT / USERNAME / PASSWORD / FROM / SECURE | 邮箱验证码发信 |
 | CLIP_PUBLIC_ORIGIN | 可选对外 origin 记录 |
 | CLIP_MAX_TEXT_BYTES | 默认 65536 |
 | CLIP_MAX_ITEMS / CLIP_MAX_CIPHERTEXT_BYTES | 默认 10000 / 104857600 |

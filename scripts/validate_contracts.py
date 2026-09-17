@@ -80,6 +80,26 @@ def validate_vectors():
             except InvalidTag:
                 continue
             raise AssertionError("AEAD accepted a modified vector")
+    wrap = fixture.get("password_wrap")
+    if wrap:
+        try:
+            from cryptography.hazmat.primitives.kdf.argon2 import Argon2id
+        except ImportError:
+            Argon2id = None
+        if Argon2id is not None:
+            password = fixture["password_wrap_password"].encode("utf-8")
+            ikm = Argon2id(
+                salt=decode(wrap["kdf_salt"]),
+                length=32,
+                iterations=wrap["time"],
+                lanes=wrap["parallelism"],
+                memory_cost=wrap["memory"],
+            ).derive(password)
+            kek = derive(ikm, decode(wrap["wrap_salt"]), b"onlineclipboard/v1/wrap-password")
+            assert kek.hex() == wrap["wrap_key_hex"]
+            aad = f"oc-v1|vault-password|{fixture['user_id']}|{vault['vault_id']}|1".encode()
+            assert AESGCM(kek).encrypt(decode(wrap["wrap_nonce"]), cmk, aad) == decode(wrap["wrapped_key"])
+            assert AESGCM(kek).decrypt(decode(wrap["wrap_nonce"]), decode(wrap["wrapped_key"]), aad) == cmk
     return len(fixture["items"])
 
 

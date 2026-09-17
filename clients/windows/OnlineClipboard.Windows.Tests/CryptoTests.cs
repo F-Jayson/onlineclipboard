@@ -41,6 +41,34 @@ public class CryptoTests
     }
 
     [Fact]
+    public void MatchesPasswordWrapVector()
+    {
+        var json = File.ReadAllText("crypto-v1-vectors.json");
+        using var doc = JsonDocument.Parse(json);
+        var root = doc.RootElement;
+        var userId = root.GetProperty("user_id").GetString()!;
+        var cmk = Convert.FromHexString(root.GetProperty("cmk_hex").GetString()!);
+        var vaultId = root.GetProperty("vault_envelope").GetProperty("vault_id").GetString()!;
+        var password = root.GetProperty("password_wrap_password").GetString()!;
+        var wrap = root.GetProperty("password_wrap");
+        var kdfSalt = CryptoV1.Decode(wrap.GetProperty("kdf_salt").GetString()!);
+        var wrapSalt = CryptoV1.Decode(wrap.GetProperty("wrap_salt").GetString()!);
+        var nonce = CryptoV1.Decode(wrap.GetProperty("wrap_nonce").GetString()!);
+        var wrapped = CryptoV1.WrapCmkWithPassword(password, kdfSalt, wrapSalt, nonce, cmk, userId, vaultId);
+        Assert.Equal(wrap.GetProperty("wrapped_key").GetString(), CryptoV1.Encode(wrapped));
+        var opened = CryptoV1.UnwrapCmkWithPassword(
+            password, kdfSalt, wrapSalt, nonce,
+            CryptoV1.Decode(wrap.GetProperty("wrapped_key").GetString()!),
+            userId, vaultId,
+            wrap.GetProperty("time").GetInt32(),
+            wrap.GetProperty("memory").GetInt32(),
+            wrap.GetProperty("parallelism").GetInt32());
+        Assert.Equal(cmk, opened);
+        Assert.ThrowsAny<Exception>(() => CryptoV1.UnwrapCmkWithPassword(
+            "wrong-password-12", kdfSalt, wrapSalt, nonce, wrapped, userId, vaultId, 3, 65536, 1));
+    }
+
+    [Fact]
     public void NormalizesOrigins()
     {
         Assert.Equal("https://clip.example.com", Origin.Normalize("clip.example.com"));

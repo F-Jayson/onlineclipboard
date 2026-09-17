@@ -38,13 +38,36 @@ type Device struct {
 	RevokedAt  *time.Time `json:"revoked_at"`
 }
 
+type PasswordWrap struct {
+	KDF         string `json:"kdf"`
+	Time        int    `json:"time"`
+	Memory      int    `json:"memory"`
+	Parallelism int    `json:"parallelism"`
+	KDFSalt     string `json:"kdf_salt"`
+	WrapSalt    string `json:"wrap_salt"`
+	WrapNonce   string `json:"wrap_nonce"`
+	WrappedKey  string `json:"wrapped_key"`
+}
+
+type PasswordWrapRaw struct {
+	KDF         string
+	Time        int
+	Memory      int
+	Parallelism int
+	KDFSalt     []byte
+	WrapSalt    []byte
+	WrapNonce   []byte
+	WrappedKey  []byte
+}
+
 type VaultEnvelope struct {
-	VaultID       string `json:"vault_id"`
-	FormatVersion int    `json:"format_version"`
-	KeyEpoch      int    `json:"key_epoch"`
-	WrapSalt      string `json:"wrap_salt"`
-	WrapNonce     string `json:"wrap_nonce"`
-	WrappedKey    string `json:"wrapped_key"`
+	VaultID       string        `json:"vault_id"`
+	FormatVersion int           `json:"format_version"`
+	KeyEpoch      int           `json:"key_epoch"`
+	WrapSalt      string        `json:"wrap_salt"`
+	WrapNonce     string        `json:"wrap_nonce"`
+	WrappedKey    string        `json:"wrapped_key"`
+	PasswordWrap  *PasswordWrap `json:"password_wrap,omitempty"`
 }
 
 type Envelope struct {

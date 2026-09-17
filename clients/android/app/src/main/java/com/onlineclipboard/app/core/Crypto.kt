@@ -6,6 +6,8 @@ import javax.crypto.Cipher
 import javax.crypto.Mac
 import javax.crypto.spec.GCMParameterSpec
 import javax.crypto.spec.SecretKeySpec
+import org.bouncycastle.crypto.generators.Argon2BytesGenerator
+import org.bouncycastle.crypto.params.Argon2Parameters
 
 object CryptoV1 {
     fun encode(raw: ByteArray): String =
@@ -58,6 +60,10 @@ object CryptoV1 {
         return raw
     }
 
+    const val passwordKdfTime = 3
+    const val passwordKdfMemoryKib = 64 * 1024
+    const val passwordKdfParallel = 1
+
     fun wrapCmk(rk: ByteArray, salt: ByteArray, nonce: ByteArray, cmk: ByteArray, userId: String, vaultId: String): ByteArray {
         val kek = hkdf(rk, salt, "onlineclipboard/v1/wrap".toByteArray(StandardCharsets.UTF_8))
         val aad = "oc-v1|vault|$userId|$vaultId|1".toByteArray(StandardCharsets.UTF_8)
@@ -68,6 +74,66 @@ object CryptoV1 {
         val kek = hkdf(rk, salt, "onlineclipboard/v1/wrap".toByteArray(StandardCharsets.UTF_8))
         val aad = "oc-v1|vault|$userId|$vaultId|1".toByteArray(StandardCharsets.UTF_8)
         return aesGcmOpen(kek, nonce, wrapped, aad)
+    }
+
+    fun passwordIkm(password: String, salt: ByteArray, time: Int, memory: Int, parallel: Int): ByteArray {
+        val t = if (time <= 0) passwordKdfTime else time
+        val m = if (memory <= 0) passwordKdfMemoryKib else memory
+        val p = if (parallel <= 0) passwordKdfParallel else parallel
+        val params = Argon2Parameters.Builder(Argon2Parameters.ARGON2_id)
+            .withVersion(Argon2Parameters.ARGON2_VERSION_13)
+            .withIterations(t)
+            .withMemoryAsKB(m)
+            .withParallelism(p)
+            .withSalt(salt)
+            .build()
+        val gen = Argon2BytesGenerator()
+        gen.init(params)
+        val out = ByteArray(32)
+        gen.generateBytes(password.toByteArray(StandardCharsets.UTF_8), out)
+        return out
+    }
+
+    fun wrapCmkWithPassword(
+        password: String, kdfSalt: ByteArray, wrapSalt: ByteArray, wrapNonce: ByteArray,
+        cmk: ByteArray, userId: String, vaultId: String
+    ): ByteArray {
+        val kek = hkdf(
+            passwordIkm(password, kdfSalt, passwordKdfTime, passwordKdfMemoryKib, passwordKdfParallel),
+            wrapSalt,
+            "onlineclipboard/v1/wrap-password".toByteArray(StandardCharsets.UTF_8)
+        )
+        val aad = "oc-v1|vault-password|$userId|$vaultId|1".toByteArray(StandardCharsets.UTF_8)
+        return aesGcm(kek, wrapNonce, cmk, aad)
+    }
+
+    fun unwrapCmkWithPassword(
+        password: String, kdfSalt: ByteArray, wrapSalt: ByteArray, wrapNonce: ByteArray,
+        wrapped: ByteArray, userId: String, vaultId: String, time: Int, memory: Int, parallel: Int
+    ): ByteArray {
+        val kek = hkdf(
+            passwordIkm(password, kdfSalt, time, memory, parallel),
+            wrapSalt,
+            "onlineclipboard/v1/wrap-password".toByteArray(StandardCharsets.UTF_8)
+        )
+        val aad = "oc-v1|vault-password|$userId|$vaultId|1".toByteArray(StandardCharsets.UTF_8)
+        return aesGcmOpen(kek, wrapNonce, wrapped, aad)
+    }
+
+    fun makePasswordWrap(password: String, cmk: ByteArray, userId: String, vaultId: String): PasswordWrap {
+        val kdfSalt = random(16)
+        val wrapSalt = random(32)
+        val nonce = random(12)
+        val wrapped = wrapCmkWithPassword(password, kdfSalt, wrapSalt, nonce, cmk, userId, vaultId)
+        return PasswordWrap(
+            time = passwordKdfTime,
+            memory = passwordKdfMemoryKib,
+            parallelism = passwordKdfParallel,
+            kdfSalt = encode(kdfSalt),
+            wrapSalt = encode(wrapSalt),
+            wrapNonce = encode(nonce),
+            wrappedKey = encode(wrapped)
+        )
     }
 
     fun encryptItem(
@@ -92,3 +158,14 @@ object CryptoV1 {
 
     fun uuid(): String = java.util.UUID.randomUUID().toString()
 }
+
+data class PasswordWrap(
+    val kdf: String = "argon2id",
+    val time: Int,
+    val memory: Int,
+    val parallelism: Int,
+    val kdfSalt: String,
+    val wrapSalt: String,
+    val wrapNonce: String,
+    val wrappedKey: String
+)

@@ -19,15 +19,17 @@
 | GET /healthz | 进程存活 | 200 |
 | GET /readyz | 数据库可达且迁移完成后就绪 | 200 或 503 |
 | GET /api/v1/server-info | 服务版本、协议、能力、限制 | 200 |
-| POST /auth/register | 邀请+账号密码+设备描述，创建账号和初始会话 | 201 AuthResult |
-| POST /auth/login | 密码认证，创建本次设备会话 | 200 AuthResult |
+| POST /auth/register | 按 server-info 的注册模式创建账号：邀请、开放、或邮箱验证码 | 201 AuthResult |
+| POST /auth/email-code | 邮箱注册模式下发送 6 位验证码 | 204 |
+| POST /auth/login | 用户名或邮箱 + 密码；external 模式向配置的站点校验凭据 | 200 AuthResult |
 | POST /auth/refresh | 刷新令牌轮换 | 200 TokenPair |
 | POST /auth/logout | 撤销当前会话 | 204 |
 | POST /auth/password | 原密码验证后设置新密码，撤销所有会话含当前 | 204 |
 | GET /devices | 当前账号设备列表 | 200 |
 | DELETE /devices/{id} | 撤销该设备会话及长连接 | 204 |
-| GET /vault | 下载当前账号保险库信封 | 200 或 404 VAULT_NOT_INITIALIZED |
+| GET /vault | 下载当前账号保险库信封（可含 password_wrap） | 200 或 404 VAULT_NOT_INITIALIZED |
 | PUT /vault | 只允许首次初始化；不覆盖已有保险库 | 201 或 412 |
+| PUT /vault/password-wrap | 登录后补写或替换密码包装信封 | 204 |
 | POST /clips | 创建密文条目；条目 ID 是幂等键 | 201，新请求；200，已存在同一请求 |
 | GET /clips | 按 active/trash 列出可见密文，设备/日期过滤 | 200 分页列表；没有 q 正文搜索参数 |
 | GET /clips/{id} | 当前条目，ETag 为 version | 200；404 不属于该用户；410 已清理/过期 |
@@ -116,6 +118,6 @@ Idempotency-Key: 66666666-6666-4666-8666-666666666666
 
 ## 6. 版本与能力发现
 
-server-info 返回 `protocol_version=1`、`stage`、`sync_available`、`e2ee_available`、`registration_mode`、`max_text_bytes`、`max_request_bytes`、`trash_retention_seconds`。当前 skeleton 中可用性均为 false，注册 disabled。
+server-info 返回 `protocol_version=1`、`stage`、`sync_available`、`e2ee_available`、`registration_mode`（`invite` / `open` / `email` / `external` / `disabled`）、`email_verification`、`min_password_chars`、`password_wrap`、可选 `external_register_url`、`max_text_bytes`、`max_request_bytes`、`trash_retention_seconds`。当前 skeleton 中可用性均为 false，注册 disabled。`external` 模式下客户端隐藏本应用注册，引导到 `external_register_url`。
 
 正式客户端连接到 skeleton 时显示“服务器尚未完成业务功能”，不进入登录/采集。服务端版本不兼容时返回清晰升级提示，禁止把未知加密版本当明文显示。REST 规范不完整表达 WebSocket 帧，帧语义以 [同步文档](04-sync-protocol.md) 为准。

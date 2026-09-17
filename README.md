@@ -25,7 +25,7 @@
 
 - Windows 登录用户会话中可监听文字复制；服务端不接触剪贴板明文或内容主密钥。
 - Android 10+ 普通应用在后台读取其他应用剪贴板受系统限制；后台网络还受省电机制影响。普通模式提供前台同步、分享上传与点击复制。可选默认输入法增强模式必须先做真机验证，不能把“安装后任何状态都可直接粘贴”写成已支持能力。
-- 同账号首次接入新设备，还需输入独立的恢复密钥解锁密文。登录密码与恢复密钥用途不同。
+- 同账号登录后用登录密码自动解锁历史；独立恢复密钥只作备用（改密、新设备且本机没有已保存的密钥时）。服务端仍然看不到正文。
 - 查询正文在客户端解密后完成。回收站从服务端确认删除时起保留 168 小时，到期禁止恢复，清理任务目标在 5 分钟内删除在线密文。
 
 ## 技术栈
@@ -52,7 +52,7 @@ Invoke-RestMethod http://127.0.0.1:8080/api/v1/server-info
 go run ./cmd/clipd admin invite
 ```
 
-默认监听 `127.0.0.1:8080`。`/readyz` 在数据库可达且迁移完成后返回 200。邀请模式下用 `admin invite` 生成一次性邀请码。也可 `CLIP_REGISTRATION_MODE=open` 仅用于受信开发环境。
+默认监听 `127.0.0.1:8080`。`/readyz` 在数据库可达且迁移完成后返回 200。邀请模式下用 `admin invite` 生成一次性邀请码。也可 `CLIP_REGISTRATION_MODE=open` 仅用于受信开发环境；`email` 启用本应用邮箱验证码注册；`external` 使用外部站点（例如博客）账号登录，本应用不再开放注册。
 
 Compose 部署见 [自托管](docs/08-self-hosting.md)。Windows 开发：`dotnet run --project clients/windows/OnlineClipboard.Windows`。日常双击运行请使用自包含发布包 `dist/windows/OnlineClipboard.Windows.exe`（见 [Windows 客户端说明](clients/windows/README.md)），不要只拷贝 `bin` 里的 exe。Android：`clients/android` 下 `gradlew :app:assembleDebug`。
 

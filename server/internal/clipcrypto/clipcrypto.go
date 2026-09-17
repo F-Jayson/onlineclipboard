@@ -11,12 +11,19 @@ import (
 	"encoding/base64"
 	"fmt"
 	"strings"
+
+	"golang.org/x/crypto/argon2"
 )
 
 const (
-	WrapInfo = "onlineclipboard/v1/wrap"
-	FormatV1 = 1
-	EpochV1  = 1
+	WrapInfo             = "onlineclipboard/v1/wrap"
+	PasswordWrapInfo     = "onlineclipboard/v1/wrap-password"
+	PasswordKDF          = "argon2id"
+	PasswordKDFTime      = 3
+	PasswordKDFMemoryKiB = 64 * 1024
+	PasswordKDFParallel  = 1
+	FormatV1             = 1
+	EpochV1              = 1
 )
 
 func Decode(value string) ([]byte, error) {
@@ -69,6 +76,23 @@ func WrapAAD(userID, vaultID string) []byte {
 	return []byte("oc-v1|vault|" + userID + "|" + vaultID + "|1")
 }
 
+func PasswordWrapAAD(userID, vaultID string) []byte {
+	return []byte("oc-v1|vault-password|" + userID + "|" + vaultID + "|1")
+}
+
+func PasswordIKM(password string, salt []byte, time, memory uint32, parallel uint8) []byte {
+	if time == 0 {
+		time = PasswordKDFTime
+	}
+	if memory == 0 {
+		memory = PasswordKDFMemoryKiB
+	}
+	if parallel == 0 {
+		parallel = PasswordKDFParallel
+	}
+	return argon2.IDKey([]byte(password), salt, time, memory, parallel, 32)
+}
+
 func ItemInfo(clipID string, keyEpoch int) []byte {
 	return []byte(fmt.Sprintf("onlineclipboard/v1/item|%s|%d", clipID, keyEpoch))
 }
@@ -93,6 +117,24 @@ func UnwrapCMK(rk, wrapSalt, wrapNonce, wrapped []byte, userID, vaultID string) 
 		return nil, err
 	}
 	return OpenAESGCM(kek, wrapNonce, wrapped, WrapAAD(userID, vaultID))
+}
+
+func WrapCMKWithPassword(password string, kdfSalt, wrapSalt, wrapNonce, cmk []byte, userID, vaultID string) ([]byte, error) {
+	ikm := PasswordIKM(password, kdfSalt, PasswordKDFTime, PasswordKDFMemoryKiB, PasswordKDFParallel)
+	kek, err := Derive(ikm, wrapSalt, []byte(PasswordWrapInfo))
+	if err != nil {
+		return nil, err
+	}
+	return AESGCM(kek, wrapNonce, cmk, PasswordWrapAAD(userID, vaultID))
+}
+
+func UnwrapCMKWithPassword(password string, kdfSalt, wrapSalt, wrapNonce, wrapped []byte, userID, vaultID string, time, memory uint32, parallel uint8) ([]byte, error) {
+	ikm := PasswordIKM(password, kdfSalt, time, memory, parallel)
+	kek, err := Derive(ikm, wrapSalt, []byte(PasswordWrapInfo))
+	if err != nil {
+		return nil, err
+	}
+	return OpenAESGCM(kek, wrapNonce, wrapped, PasswordWrapAAD(userID, vaultID))
 }
 
 func EncryptItem(cmk []byte, vaultID, userID, clipID, sourceDeviceID string, keyEpoch int, nonce []byte, plaintext []byte) ([]byte, error) {

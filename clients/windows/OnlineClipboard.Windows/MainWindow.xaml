@@ -81,7 +81,7 @@
                     <StackPanel>
                         <TextBlock x:Name="PageTitle" Text="连接与账号" FontSize="22" FontWeight="SemiBold" />
                         <TextBlock x:Name="PageSubtitle" Style="{StaticResource HintText}" Margin="0,4,16,0"
-                                   Text="连接自托管服务器，登录后用恢复密钥解锁" />
+                                   Text="连接自托管服务器，登录后即可用密码解锁历史" />
                     </StackPanel>
                 </DockPanel>
 
@@ -105,25 +105,39 @@
                                     <TextBlock x:Name="OriginStatus" Style="{StaticResource HintText}" Margin="0,10,0,18" />
 
                                     <TextBlock Style="{StaticResource SectionTitle}" Text="账号" />
-                                    <TextBlock Style="{StaticResource FieldLabel}" Text="用户名" />
+                                    <TextBlock x:Name="UserLabel" Style="{StaticResource FieldLabel}" Text="用户名或邮箱" />
                                     <TextBox x:Name="UserBox" />
-                                    <TextBlock Style="{StaticResource FieldLabel}" Margin="0,12,0,6" Text="密码（至少 12 位）" />
+                                    <TextBlock x:Name="PassLabel" Style="{StaticResource FieldLabel}" Margin="0,12,0,6" Text="密码（至少 12 位）" />
                                     <PasswordBox x:Name="PassBox" />
-                                    <TextBlock Style="{StaticResource FieldLabel}" Margin="0,12,0,6" Text="邀请码（仅注册需要）" />
-                                    <TextBox x:Name="InviteBox" />
+                                    <StackPanel x:Name="EmailPanel" Visibility="Collapsed">
+                                        <TextBlock Style="{StaticResource FieldLabel}" Margin="0,12,0,6" Text="注册邮箱" />
+                                        <TextBox x:Name="EmailBox" />
+                                        <TextBlock Style="{StaticResource FieldLabel}" Margin="0,12,0,6" Text="邮箱验证码" />
+                                        <DockPanel>
+                                            <Button x:Name="SendCodeBtn" DockPanel.Dock="Right" Content="发送验证码" Margin="8,0,0,0" Click="OnSendEmailCode" />
+                                            <TextBox x:Name="EmailCodeBox" />
+                                        </DockPanel>
+                                    </StackPanel>
+                                    <StackPanel x:Name="InvitePanel">
+                                        <TextBlock Style="{StaticResource FieldLabel}" Margin="0,12,0,6" Text="邀请码（仅注册需要）" />
+                                        <TextBox x:Name="InviteBox" />
+                                    </StackPanel>
                                     <StackPanel Orientation="Horizontal" Margin="0,16,0,0">
                                         <Button Content="登录" Width="108" Click="OnLogin" />
-                                        <Button Content="注册" Width="108" Margin="8,0,0,0" Style="{StaticResource SecondaryButton}" Click="OnRegister" />
+                                        <Button x:Name="RegisterBtn" Content="注册" Width="108" Margin="8,0,0,0" Style="{StaticResource SecondaryButton}" Click="OnRegister" />
                                     </StackPanel>
+                                    <TextBlock x:Name="RegisterHint" Style="{StaticResource HintText}" Margin="0,10,0,0" Visibility="Collapsed">
+                                        <Hyperlink Click="OnOpenRegister">去站点注册账号</Hyperlink>
+                                    </TextBlock>
                                 </StackPanel>
                             </Border>
 
                             <Border Grid.Column="1" Style="{StaticResource CardBorder}" Margin="10,0,0,0">
                                 <StackPanel>
                                     <TextBlock Style="{StaticResource SectionTitle}" Text="保险库" />
-                                    <TextBlock Style="{StaticResource HintText}" Margin="0,0,0,14"
-                                               Text="登录密码不能解密历史。恢复密钥只在这台设备输入，请离线保存。" />
-                                    <TextBlock Style="{StaticResource FieldLabel}" Text="恢复密钥" />
+                                    <TextBlock x:Name="VaultHint" Style="{StaticResource HintText}" Margin="0,0,0,14"
+                                               Text="登录后会用密码自动解锁历史。恢复密钥只作备用，请离线保存。" />
+                                    <TextBlock Style="{StaticResource FieldLabel}" Text="恢复密钥（备用）" />
                                     <TextBox x:Name="RecoveryBox" Height="92" TextWrapping="Wrap" AcceptsReturn="True"
                                              FontFamily="{StaticResource MonoFont}" FontSize="12.5" />
                                     <StackPanel Orientation="Horizontal" Margin="0,16,0,0">

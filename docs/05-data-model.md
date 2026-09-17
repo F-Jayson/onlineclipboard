@@ -21,12 +21,13 @@ erDiagram
 
 | 表 | 关键字段与用途 |
 | --- | --- |
-| users | UUID、标准化登录名、密码哈希、状态、created_at；登录名首版限制 ASCII 小写字母/数字/下划线，3–32 位 |
+| users | UUID、标准化登录名、密码哈希、可选 email、auth_provider（local/external）、external_subject、状态、created_at；本地登录名 3–32 位 ASCII 小写字母/数字/下划线 |
 | devices | `(user_id,id)`、用户自定义 name、platform、created_at、last_seen_at、revoked_at；逻辑撤销保留来源关系 |
 | sessions | access_hash、refresh_hash、family_id、expires_at、refresh_expires_at、revoked_at；绑定 user/device |
 | used_refresh_tokens | 已消费 refresh_hash、family_id、绝对到期时间；用于检测令牌重用 |
 | registration_invites | token_hash、到期和消费时间；单次消费与用户创建同事务 |
-| vaults | 每用户唯一保险库；format、epoch、wrap_salt、wrap_nonce、wrapped_key；无明文密钥 |
+| vaults | 每用户唯一保险库；format、epoch、RK 包装字段，以及可选 password_wrap（argon2id 参数与密文）；无明文密钥 |
+| email_codes | 邮箱注册验证码摘要、尝试次数、发送与过期时间 |
 | user_sync_state | next_seq、min_available_seq、ciphertext_bytes、item_count；同账号事务行锁的锚点 |
 | clip_ids | 用户/条目永久 ID 登记、请求摘要、原创建序号、原创建时间、最终版本/最终序号/清理时间；无正文 |
 | clips | 用户/条目、来源设备、保险库、epoch、nonce、ciphertext、version、created_seq、last_seq、状态和生命周期时间 |

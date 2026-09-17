@@ -1,5 +1,6 @@
 using System.Security.Cryptography;
 using System.Text;
+using Konscious.Security.Cryptography;
 
 namespace OnlineClipboard.Windows.Core;
 
@@ -7,7 +8,11 @@ public static class CryptoV1
 {
     public const int FormatVersion = 1;
     public const int KeyEpoch = 1;
+    public const int PasswordKdfTime = 3;
+    public const int PasswordKdfMemoryKib = 64 * 1024;
+    public const int PasswordKdfParallel = 1;
     private static readonly byte[] WrapInfo = Encoding.UTF8.GetBytes("onlineclipboard/v1/wrap");
+    private static readonly byte[] PasswordWrapInfo = Encoding.UTF8.GetBytes("onlineclipboard/v1/wrap-password");
 
     public static byte[] RandomBytes(int n)
     {
@@ -72,6 +77,55 @@ public static class CryptoV1
 
     public static byte[] WrapAad(string userId, string vaultId) =>
         Encoding.UTF8.GetBytes($"oc-v1|vault|{userId}|{vaultId}|1");
+
+    public static byte[] PasswordWrapAad(string userId, string vaultId) =>
+        Encoding.UTF8.GetBytes($"oc-v1|vault-password|{userId}|{vaultId}|1");
+
+    public static byte[] PasswordIkm(string password, byte[] salt, int time, int memory, int parallel)
+    {
+        if (time <= 0) time = PasswordKdfTime;
+        if (memory <= 0) memory = PasswordKdfMemoryKib;
+        if (parallel <= 0) parallel = PasswordKdfParallel;
+        using var argon = new Argon2id(Encoding.UTF8.GetBytes(password))
+        {
+            Salt = salt,
+            DegreeOfParallelism = parallel,
+            MemorySize = memory,
+            Iterations = time
+        };
+        return argon.GetBytes(32);
+    }
+
+    public static byte[] WrapCmkWithPassword(string password, byte[] kdfSalt, byte[] wrapSalt, byte[] wrapNonce, byte[] cmk, string userId, string vaultId)
+    {
+        var kek = Derive(PasswordIkm(password, kdfSalt, PasswordKdfTime, PasswordKdfMemoryKib, PasswordKdfParallel), wrapSalt, PasswordWrapInfo);
+        return AesGcmSeal(kek, wrapNonce, cmk, PasswordWrapAad(userId, vaultId));
+    }
+
+    public static byte[] UnwrapCmkWithPassword(string password, byte[] kdfSalt, byte[] wrapSalt, byte[] wrapNonce, byte[] wrapped, string userId, string vaultId, int time, int memory, int parallel)
+    {
+        var kek = Derive(PasswordIkm(password, kdfSalt, time, memory, parallel), wrapSalt, PasswordWrapInfo);
+        return AesGcmOpen(kek, wrapNonce, wrapped, PasswordWrapAad(userId, vaultId));
+    }
+
+    public static PasswordWrap MakePasswordWrap(string password, byte[] cmk, string userId, string vaultId)
+    {
+        var kdfSalt = RandomBytes(16);
+        var wrapSalt = RandomBytes(32);
+        var nonce = RandomBytes(12);
+        var wrapped = WrapCmkWithPassword(password, kdfSalt, wrapSalt, nonce, cmk, userId, vaultId);
+        return new PasswordWrap
+        {
+            Kdf = "argon2id",
+            Time = PasswordKdfTime,
+            Memory = PasswordKdfMemoryKib,
+            Parallelism = PasswordKdfParallel,
+            KdfSalt = Encode(kdfSalt),
+            WrapSalt = Encode(wrapSalt),
+            WrapNonce = Encode(nonce),
+            WrappedKey = Encode(wrapped)
+        };
+    }
 
     public static byte[] ItemInfo(string clipId, int epoch) =>
         Encoding.UTF8.GetBytes($"onlineclipboard/v1/item|{clipId}|{epoch}");

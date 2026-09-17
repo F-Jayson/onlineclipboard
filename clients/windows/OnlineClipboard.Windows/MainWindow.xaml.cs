@@ -1,7 +1,9 @@
+using System.Diagnostics;
 using System.IO;
 using System.Text;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Documents;
 using System.Windows.Media;
 using OnlineClipboard.Windows.Core;
 
@@ -17,6 +19,7 @@ public partial class MainWindow : Window
     private readonly CancellationTokenSource _cts = new();
     private bool _busy;
     private List<DeviceDto> _devices = [];
+    private ServerInfo? _info;
 
     public MainWindow() => InitializeComponent();
 
@@ -46,6 +49,7 @@ public partial class MainWindow : Window
                 _api.SetAccessToken(_session.AccessToken);
                 _sync.Api = _api;
                 _sync.Session = _session;
+                _ = RefreshServerInfoAsync();
             }
         }
         else
@@ -107,6 +111,8 @@ public partial class MainWindow : Window
             var origin = Origin.Normalize(OriginBox.Text);
             using var api = new ApiClient(origin);
             var info = await api.ServerInfoAsync(_cts.Token);
+            _info = info;
+            ApplyAuthMode(info);
             OriginStatus.Text = info.SyncAvailable
                 ? $"已连接 {info.Name} {info.Version}，注册模式 {info.RegistrationMode}"
                 : $"服务器尚未就绪（stage={info.Stage}）";
@@ -127,35 +133,55 @@ public partial class MainWindow : Window
         try
         {
             var origin = Origin.Normalize(OriginBox.Text);
+            var password = PassBox.Password;
             _api?.Dispose();
             _api = new ApiClient(origin);
+            try { _info = await _api.ServerInfoAsync(_cts.Token); ApplyAuthMode(_info); } catch { /* probe later */ }
             object body = register
                 ? new
                 {
                     username = UserBox.Text.Trim(),
-                    password = PassBox.Password,
+                    password,
                     invite_token = InviteBox.Text.Trim(),
+                    email = EmailBox.Text.Trim(),
+                    email_code = EmailCodeBox.Text.Trim(),
                     device = new { id = _session.DeviceId, name = _session.DeviceName, platform = "windows" }
                 }
                 : new
                 {
                     username = UserBox.Text.Trim(),
-                    password = PassBox.Password,
+                    password,
                     device = new { id = _session.DeviceId, name = _session.DeviceName, platform = "windows" }
                 };
+            var previousUser = _session.UserId;
+            var previousCmk = _session.Cmk;
+            var previousVault = _session.VaultId;
             var result = register ? await _api.RegisterAsync(body, _cts.Token) : await _api.LoginAsync(body, _cts.Token);
             _session.Origin = origin;
             _session.UserId = result.UserId;
             _session.DeviceId = result.DeviceId;
             _session.AccessToken = result.AccessToken;
             _session.RefreshToken = result.RefreshToken;
+            if (result.UserId != previousUser)
+            {
+                _session.Cmk = null;
+                _session.VaultId = "";
+                _session.SyncEpoch = "";
+                _session.Cursor = "0";
+                _store!.ClearUserData();
+            }
+            else
+            {
+                _session.Cmk = previousCmk;
+                _session.VaultId = previousVault;
+            }
             _api.SetAccessToken(result.AccessToken);
             _store!.Set("username", UserBox.Text.Trim());
             _session.PersistSecrets(_store);
             _sync.Api = _api;
             _sync.Session = _session;
             _sync.Store = _store;
-            SetStatus(result.VaultInitialized ? "已登录，请输入恢复密钥解锁" : "已登录，请初始化保险库");
+            await UnlockAfterAuthAsync(password, result.VaultInitialized);
         }
         catch (Exception ex)
         {
@@ -164,33 +190,35 @@ public partial class MainWindow : Window
         finally { _busy = false; }
     }
 
+    private async void OnSendEmailCode(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            var origin = Origin.Normalize(OriginBox.Text);
+            using var api = new ApiClient(origin);
+            await api.RequestEmailCodeAsync(EmailBox.Text.Trim(), _cts.Token);
+            SetStatus("验证码已发送，请查收邮箱。");
+        }
+        catch (Exception ex)
+        {
+            SetStatus(ex.Message);
+        }
+    }
+
+    private void OnOpenRegister(object sender, RoutedEventArgs e)
+    {
+        var url = _info?.ExternalRegisterUrl;
+        if (string.IsNullOrWhiteSpace(url)) return;
+        Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
+    }
+
     private async void OnInitVault(object sender, RoutedEventArgs e)
     {
         if (_api == null || _store == null) { SetStatus("请先登录"); return; }
+        if (string.IsNullOrEmpty(PassBox.Password)) { SetStatus("请先填写登录密码，再初始化保险库。"); return; }
         try
         {
-            var cmk = CryptoV1.RandomBytes(32);
-            var rk = CryptoV1.RandomBytes(32);
-            var salt = CryptoV1.RandomBytes(32);
-            var nonce = CryptoV1.RandomBytes(12);
-            var vaultId = AppSession.NewId();
-            var wrapped = CryptoV1.WrapCmk(rk, salt, nonce, cmk, _session.UserId, vaultId);
-            var env = new VaultEnvelope
-            {
-                VaultId = vaultId,
-                WrapSalt = CryptoV1.Encode(salt),
-                WrapNonce = CryptoV1.Encode(nonce),
-                WrappedKey = CryptoV1.Encode(wrapped)
-            };
-            await _api.PutVaultAsync(env, _cts.Token);
-            _session.VaultId = vaultId;
-            _session.Cmk = cmk;
-            _session.PersistSecrets(_store);
-            var code = CryptoV1.RecoveryCode(rk);
-            RecoveryBox.Text = code;
-            KeyStatus.Text = "请离线保存恢复密钥。登录密码不能解密历史。";
-            MessageBox.Show(this, "请立即抄写并离线保存恢复密钥：\n\n" + code, "恢复密钥");
-            SetStatus("保险库已初始化");
+            await InitVaultWithPasswordAsync(PassBox.Password, showRecovery: true);
         }
         catch (Exception ex)
         {
@@ -203,24 +231,164 @@ public partial class MainWindow : Window
         if (_api == null || _store == null) { SetStatus("请先登录"); return; }
         try
         {
-            var vault = await _api.GetVaultAsync(_cts.Token);
-            var rk = CryptoV1.ParseRecoveryCode(RecoveryBox.Text);
-            var cmk = CryptoV1.UnwrapCmk(rk, CryptoV1.Decode(vault.WrapSalt), CryptoV1.Decode(vault.WrapNonce),
-                CryptoV1.Decode(vault.WrappedKey), _session.UserId, vault.VaultId);
-            _session.VaultId = vault.VaultId;
-            _session.Cmk = cmk;
-            _session.PersistSecrets(_store);
-            _sync.Session = _session;
-            KeyStatus.Text = "已解锁";
-            SetStatus("已解锁，开始同步");
-            await _sync.RunOnceAsync(_cts.Token);
-            RefreshLists();
+            await UnlockAfterAuthAsync(PassBox.Password, vaultInitialized: true);
+            if (_session.Cmk == null)
+            {
+                var vault = await _api.GetVaultAsync(_cts.Token);
+                var rk = CryptoV1.ParseRecoveryCode(RecoveryBox.Text);
+                var cmk = CryptoV1.UnwrapCmk(rk, CryptoV1.Decode(vault.WrapSalt), CryptoV1.Decode(vault.WrapNonce),
+                    CryptoV1.Decode(vault.WrappedKey), _session.UserId, vault.VaultId);
+                await FinishUnlockAsync(cmk, vault, PassBox.Password);
+            }
         }
         catch (Exception ex)
         {
             KeyStatus.Text = "恢复密钥不正确，或信封无法解密。";
             SetStatus(ex.Message);
         }
+    }
+
+    private async Task RefreshServerInfoAsync()
+    {
+        if (_api == null) return;
+        try
+        {
+            _info = await _api.ServerInfoAsync(_cts.Token);
+            Dispatcher.Invoke(() => ApplyAuthMode(_info));
+        }
+        catch { /* ignore */ }
+    }
+
+    private void ApplyAuthMode(ServerInfo? info)
+    {
+        var mode = info?.RegistrationMode ?? "";
+        EmailPanel.Visibility = Vis(mode == "email");
+        InvitePanel.Visibility = Vis(mode is "" or "invite");
+        RegisterBtn.Visibility = Vis(mode is not "external" and not "disabled");
+        RegisterHint.Visibility = Vis(mode == "external" && !string.IsNullOrWhiteSpace(info?.ExternalRegisterUrl));
+        var min = info is { MinPasswordChars: > 0 } ? info.MinPasswordChars : 12;
+        PassLabel.Text = min <= 1 ? "密码" : $"密码（至少 {min} 位）";
+        UserLabel.Text = mode == "external" ? "站点账号或邮箱" : "用户名或邮箱";
+    }
+
+    private async Task UnlockAfterAuthAsync(string password, bool vaultInitialized)
+    {
+        if (_api == null || _store == null) return;
+        if (!vaultInitialized)
+        {
+            if (string.IsNullOrEmpty(password)) { SetStatus("已登录，请填写密码后初始化保险库"); return; }
+            await InitVaultWithPasswordAsync(password, showRecovery: true);
+            return;
+        }
+        VaultEnvelope vault;
+        try { vault = await _api.GetVaultAsync(_cts.Token); }
+        catch (ApiError ex) when (ex.Code == "VAULT_NOT_INITIALIZED")
+        {
+            if (string.IsNullOrEmpty(password)) { SetStatus("已登录，请初始化保险库"); return; }
+            await InitVaultWithPasswordAsync(password, showRecovery: true);
+            return;
+        }
+        byte[]? cmk = null;
+        if (_session.Cmk != null && _session.VaultId == vault.VaultId)
+            cmk = _session.Cmk;
+        if (cmk == null && vault.PasswordWrap != null && !string.IsNullOrEmpty(password))
+        {
+            try { cmk = await Task.Run(() => UnwrapPassword(vault, password)); }
+            catch { /* stale wrap */ }
+        }
+        if (cmk == null && !string.IsNullOrWhiteSpace(RecoveryBox.Text))
+        {
+            try
+            {
+                var rk = CryptoV1.ParseRecoveryCode(RecoveryBox.Text);
+                cmk = CryptoV1.UnwrapCmk(rk, CryptoV1.Decode(vault.WrapSalt), CryptoV1.Decode(vault.WrapNonce),
+                    CryptoV1.Decode(vault.WrappedKey), _session.UserId, vault.VaultId);
+            }
+            catch { /* wait for manual unlock */ }
+        }
+        if (cmk == null)
+        {
+            SetStatus("已登录。新设备请输入恢复密钥解锁，之后即可用登录密码打开历史。");
+            return;
+        }
+        await FinishUnlockAsync(cmk, vault, password);
+    }
+
+    private async Task InitVaultWithPasswordAsync(string password, bool showRecovery)
+    {
+        if (_api == null || _store == null) return;
+        var cmk = CryptoV1.RandomBytes(32);
+        var rk = CryptoV1.RandomBytes(32);
+        var salt = CryptoV1.RandomBytes(32);
+        var nonce = CryptoV1.RandomBytes(12);
+        var vaultId = AppSession.NewId();
+        var wrapped = await Task.Run(() => CryptoV1.WrapCmk(rk, salt, nonce, cmk, _session.UserId, vaultId));
+        var pw = await Task.Run(() => CryptoV1.MakePasswordWrap(password, cmk, _session.UserId, vaultId));
+        var env = new VaultEnvelope
+        {
+            VaultId = vaultId,
+            WrapSalt = CryptoV1.Encode(salt),
+            WrapNonce = CryptoV1.Encode(nonce),
+            WrappedKey = CryptoV1.Encode(wrapped),
+            PasswordWrap = pw
+        };
+        await _api.PutVaultAsync(env, _cts.Token);
+        _session.VaultId = vaultId;
+        _session.Cmk = cmk;
+        _session.PersistSecrets(_store);
+        var code = CryptoV1.RecoveryCode(rk);
+        RecoveryBox.Text = code;
+        KeyStatus.Text = "请离线保存恢复密钥。之后登录即可用密码解锁。";
+        if (showRecovery)
+            MessageBox.Show(this, "请立即抄写并离线保存恢复密钥（密码丢失时用来恢复）：\n\n" + code, "恢复密钥");
+        SetStatus("保险库已初始化并解锁");
+        await _sync.RunOnceAsync(_cts.Token);
+        RefreshLists();
+    }
+
+    private async Task FinishUnlockAsync(byte[] cmk, VaultEnvelope vault, string password)
+    {
+        if (_api == null || _store == null) return;
+        _session.VaultId = vault.VaultId;
+        _session.Cmk = cmk;
+        _session.PersistSecrets(_store);
+        _sync.Session = _session;
+        if (!string.IsNullOrEmpty(password))
+        {
+            var wrapOk = false;
+            if (vault.PasswordWrap != null)
+            {
+                try
+                {
+                    await Task.Run(() => UnwrapPassword(vault, password));
+                    wrapOk = true;
+                }
+                catch { wrapOk = false; }
+            }
+            if (!wrapOk)
+            {
+                var pw = await Task.Run(() => CryptoV1.MakePasswordWrap(password, cmk, _session.UserId, vault.VaultId));
+                await _api.PutPasswordWrapAsync(pw, _cts.Token);
+            }
+        }
+        KeyStatus.Text = "已解锁";
+        SetStatus("已解锁，开始同步");
+        await _sync.RunOnceAsync(_cts.Token);
+        RefreshLists();
+    }
+
+    private byte[] UnwrapPassword(VaultEnvelope vault, string password)
+    {
+        var wrap = vault.PasswordWrap ?? throw new InvalidOperationException("no password wrap");
+        return CryptoV1.UnwrapCmkWithPassword(
+            password,
+            CryptoV1.Decode(wrap.KdfSalt),
+            CryptoV1.Decode(wrap.WrapSalt),
+            CryptoV1.Decode(wrap.WrapNonce),
+            CryptoV1.Decode(wrap.WrappedKey),
+            _session.UserId,
+            vault.VaultId,
+            wrap.Time, wrap.Memory, wrap.Parallelism);
     }
 
     private async void OnSync(object sender, RoutedEventArgs e)
@@ -339,7 +507,7 @@ public partial class MainWindow : Window
         };
         PageSubtitle.Text = index switch
         {
-            0 => "连接自托管服务器，登录后用恢复密钥解锁",
+            0 => "连接自托管服务器，登录后即可用密码解锁历史",
             1 => "明文只保存在这台电脑，服务器只有密文",
             2 => "删除后 168 小时内可恢复，到期将从服务器清除",
             _ => "撤销设备会立即切断该设备的同步会话"

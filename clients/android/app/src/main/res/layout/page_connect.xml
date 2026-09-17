@@ -16,7 +16,7 @@
 
         <TextView
             style="@style/PageSubtitle"
-            android:text="连接自托管服务器，登录后用恢复密钥解锁。" />
+            android:text="连接自托管服务器，登录后即可用密码解锁历史。" />
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -92,26 +92,77 @@
                 android:textSize="16sp"
                 android:textStyle="bold" />
 
-            <TextView style="@style/FieldLabel" android:layout_marginTop="8dp" android:text="用户名" />
+            <TextView
+                android:id="@+id/userLabel"
+                style="@style/FieldLabel"
+                android:layout_marginTop="8dp"
+                android:text="用户名或邮箱" />
 
             <EditText
                 android:id="@+id/userBox"
                 style="@style/FieldInput"
                 android:inputType="text" />
 
-            <TextView style="@style/FieldLabel" android:text="密码（至少 12 位）" />
+            <TextView
+                android:id="@+id/passLabel"
+                style="@style/FieldLabel"
+                android:text="密码（至少 12 位）" />
 
             <EditText
                 android:id="@+id/passBox"
                 style="@style/FieldInput"
                 android:inputType="textPassword" />
 
-            <TextView style="@style/FieldLabel" android:text="邀请码（仅注册需要）" />
+            <LinearLayout
+                android:id="@+id/emailPanel"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:visibility="gone">
 
-            <EditText
-                android:id="@+id/inviteBox"
-                style="@style/FieldInput"
-                android:inputType="text" />
+                <TextView style="@style/FieldLabel" android:text="注册邮箱" />
+
+                <EditText
+                    android:id="@+id/emailBox"
+                    style="@style/FieldInput"
+                    android:inputType="textEmailAddress" />
+
+                <TextView style="@style/FieldLabel" android:text="邮箱验证码" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal">
+
+                    <EditText
+                        android:id="@+id/emailCodeBox"
+                        style="@style/FieldInput"
+                        android:layout_width="0dp"
+                        android:layout_weight="1"
+                        android:inputType="number"
+                        android:maxLength="6" />
+
+                    <Button
+                        android:id="@+id/btnSendCode"
+                        style="@style/GhostButton"
+                        android:layout_marginStart="8dp"
+                        android:text="发送验证码" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/invitePanel"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
+
+                <TextView style="@style/FieldLabel" android:text="邀请码（仅注册需要）" />
+
+                <EditText
+                    android:id="@+id/inviteBox"
+                    style="@style/FieldInput"
+                    android:inputType="text" />
+            </LinearLayout>
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -130,6 +181,16 @@
                     style="@style/SecondaryButton"
                     android:text="注册" />
             </LinearLayout>
+
+            <TextView
+                android:id="@+id/registerHint"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:text="去站点注册账号"
+                android:textColor="@color/accent"
+                android:textSize="12sp"
+                android:visibility="gone" />
         </LinearLayout>
 
         <LinearLayout
@@ -152,11 +213,11 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="4dp"
-                android:text="登录密码不能解密历史。恢复密钥请离线保存。"
+                android:text="登录后会用密码自动解锁历史。恢复密钥只作备用，请离线保存。"
                 android:textColor="@color/muted"
                 android:textSize="12sp" />
 
-            <TextView style="@style/FieldLabel" android:text="恢复密钥" />
+            <TextView style="@style/FieldLabel" android:text="恢复密钥（备用）" />
 
             <EditText
                 android:id="@+id/recoveryBox"

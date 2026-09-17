@@ -12,9 +12,9 @@ AEAD 可检测密文篡改及上下文替换，但不阻止恶意服务器拒绝
 
 | 材料 | 生成/保存 | 用途 |
 | --- | --- | --- |
-| 登录密码 | 用户输入；服务器只保存独立盐的 Argon2id PHC 字符串 | 验证账号身份；不是内容加密密钥 |
+| 登录密码 | 用户输入；服务器只保存独立盐的 Argon2id PHC 字符串（本地账号）或由外部站点验证 | 验证账号身份；客户端另用 Argon2id 派生密码包装密钥，服务端只存密文信封 |
 | 内容主密钥 CMK | 首台客户端 CSPRNG 生成 32 字节；客户端安全保存 | 按条目派生加密密钥 |
-| 恢复密钥 RK | 首台客户端 CSPRNG 生成独立 32 字节，用户离线保存 | 派生包装密钥，解锁服务器上的 CMK 信封 |
+| 恢复密钥 RK | 首台客户端 CSPRNG 生成独立 32 字节，用户离线保存 | 备用包装密钥；密码丢失或换设备且本地无 CMK 时使用 |
 | 本地保护密钥 | Windows 用户密钥保护 / Android Keystore | 包装本地 CMK、令牌、离线队列密钥 |
 | 会话令牌 | 服务端 CSPRNG，访问和刷新各 32 随机字节 | API 认证；数据库只存 SHA-256 摘要 |
 
@@ -27,11 +27,11 @@ Argon2id 初始基准建议内存 64 MiB、迭代 3、并行度 1，经目标服
 ## 3. 首次初始化与新设备
 
 1. 注册创建 `user_id`，服务端返回 `vault_initialized=false`。同一个账号允许登录查看设备，但保险库未初始化时不能写条目。
-2. 客户端生成 `vault_id`、CMK、RK、32 字节 `wrap_salt` 与 12 字节 `wrap_nonce`；密钥版本 `key_epoch=1`。
-3. 显示恢复码 `oc1_` + RK 的无填充 base64url（43 字符）；可视觉分组，导入时只去除界面允许的分组空格；前缀、长度、字节范围严格校验。它是高熵随机密钥，不能换成用户短口令后继续使用 HKDF。
-4. 用户离线保存并确认后，上传 CMK 信封，使用 `PUT /vault` + `If-None-Match: *`。数据库对 `user_id` 唯一，两个初始化请求只有一个成功；失败端销毁候选 CMK，重新获取已存在保险库并要求其恢复码，禁止覆盖。
-5. 新设备登录后下载信封，本地输入 RK 派生密钥、验证解密。成功后以系统密钥机制保护 CMK，再开始历史解密。
-6. RK 不提交服务器，也不默认写入应用日志、崩溃报告或系统剪贴板。服务端“忘记密码”只能重置认证并撤销会话，不能恢复内容。
+2. 客户端生成 `vault_id`、CMK、RK、32 字节 `wrap_salt` 与 12 字节 `wrap_nonce`，以及独立的密码包装信封；密钥版本 `key_epoch=1`。
+3. 显示恢复码 `oc1_` + RK 的无填充 base64url（43 字符）；可视觉分组，导入时只去除界面允许的分组空格；前缀、长度、字节范围严格校验。它是高熵随机密钥，日常解锁改用登录密码包装，RK 只作备用。
+4. 用户离线保存并确认后，上传 CMK 信封（可同时带 `password_wrap`），使用 `PUT /vault` + `If-None-Match: *`。数据库对 `user_id` 唯一，两个初始化请求只有一个成功；失败端销毁候选 CMK，重新获取已存在保险库并要求其恢复码，禁止覆盖。
+5. 登录成功后客户端按顺序尝试：本机已保护的 CMK、服务器上的密码包装信封、用户输入的恢复密钥。成功后以系统密钥机制保护 CMK，并在信封缺失或与当前密码不匹配时 `PUT /vault/password-wrap` 补写。
+6. RK 不提交服务器，也不默认写入应用日志、崩溃报告或系统剪贴板。服务端“忘记密码”只能重置认证并撤销会话；密码变更后旧密码信封失效，需本机 CMK 或 RK 再包装。所有设备失去 CMK 且 RK 丢失，则历史不可恢复。
 
 恢复码丢失但旧设备还可解锁时，首版允许从旧设备安全显示之前保存的恢复材料，或重新登录继续使用旧设备；是否持久保存 RK 应明确为用户选择，默认只持久保存 CMK。**若未保存 RK，仅有 CMK 的设备不能凭空重建原 RK。** 重新包装/轮换恢复码属于 P1，需要单独 CAS API 和安全确认；首版不要给出不存在的“重置恢复码”按钮。所有设备失去 CMK 且 RK 丢失，则历史不可恢复，管理员不能解密。
 
@@ -49,6 +49,20 @@ wrapped_key = AES-256-GCM(KEK, wrap_nonce, plaintext=CMK, AAD=wrap_aad)
 ```
 
 `wrapped_key` 按 `ciphertext || tag` 组合，共 48 字节；字段另外保存 `wrap_salt`、`wrap_nonce`、`vault_id`、`key_epoch`、`format_version=1`。`user_id` 使用登录得到的账号 ID，客户端不可用信封里任意另一个账号替代预期值。
+
+### 4.1.1 登录密码包装
+
+服务端只保存不透明信封，从不接收明文密码用于解密，也不持有 CMK。
+
+```text
+password_ikm = Argon2id(password, kdf_salt, t=3, m=65536 KiB, p=1, L=32)
+wrap_info = UTF8("onlineclipboard/v1/wrap-password")
+KEK = HKDF-SHA256(IKM=password_ikm, salt=wrap_salt, info=wrap_info, L=32)
+wrap_aad = UTF8("oc-v1|vault-password|" + user_id + "|" + vault_id + "|1")
+password_wrapped_key = AES-256-GCM(KEK, wrap_nonce, plaintext=CMK, AAD=wrap_aad)
+```
+
+`kdf_salt` 16 字节，`wrap_salt` 32 字节，`wrap_nonce` 12 字节，`password_wrapped_key` 48 字节。KDF 标识固定 `argon2id`。参数可在信封中携带以便日后提高成本，但服务端校验范围：time 1–10、memory 8192–262144 KiB、parallelism 1–4。密码包装与 RK 包装互不影响；改密后旧信封无法打开，客户端用本机 CMK 或 RK 重新上传。
 
 ### 4.2 条目加密
 

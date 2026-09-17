@@ -48,6 +48,15 @@ class LocalStore(context: Context) : SQLiteOpenHelper(context, "local.db", null,
         )
     }
 
+    fun delete(key: String) {
+        writableDatabase.execSQL("DELETE FROM meta WHERE k=?", arrayOf(key))
+    }
+
+    fun clearUserData() {
+        writableDatabase.execSQL("DELETE FROM clips")
+        writableDatabase.execSQL("DELETE FROM outbox")
+    }
+
     fun upsertClip(item: HistoryItem, vaultId: String, nonce: String, ciphertext: String) {
         writableDatabase.execSQL(
             """INSERT INTO clips(id,status,version,created_seq,created_at,expires_at,source_device_id,vault_id,nonce,ciphertext,plaintext)

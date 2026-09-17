@@ -63,7 +63,8 @@ class AppSession {
         store.set("auto_write", if (autoWrite) "1" else "0")
         if (accessToken.isNotEmpty()) store.set("access_token", LocalProtect.wrap(accessToken.toByteArray(Charsets.UTF_8)))
         if (refreshToken.isNotEmpty()) store.set("refresh_token", LocalProtect.wrap(refreshToken.toByteArray(Charsets.UTF_8)))
-        cmk?.let { store.set("cmk", LocalProtect.wrap(it)) }
+        val key = cmk
+        if (key != null) store.set("cmk", LocalProtect.wrap(key)) else store.delete("cmk")
     }
 
     companion object {

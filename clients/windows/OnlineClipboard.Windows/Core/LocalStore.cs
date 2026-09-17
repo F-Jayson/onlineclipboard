@@ -52,6 +52,21 @@ public sealed class LocalStore : IDisposable
         cmd.ExecuteNonQuery();
     }
 
+    public void Delete(string key)
+    {
+        using var cmd = _db.CreateCommand();
+        cmd.CommandText = "DELETE FROM meta WHERE k=$k";
+        cmd.Parameters.AddWithValue("$k", key);
+        cmd.ExecuteNonQuery();
+    }
+
+    public void ClearUserData()
+    {
+        using var cmd = _db.CreateCommand();
+        cmd.CommandText = "DELETE FROM clips; DELETE FROM outbox; DELETE FROM ops;";
+        cmd.ExecuteNonQuery();
+    }
+
     public void UpsertClip(HistoryItem item, string vaultId, string nonce, string ciphertext)
     {
         using var cmd = _db.CreateCommand();

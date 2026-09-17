@@ -12,7 +12,7 @@ go run ./cmd/clipd
 - `/healthz`：进程存活。
 - `/readyz`：数据库可连接时 200。
 - `/api/v1/server-info`：`sync_available` / `e2ee_available` 为 true，`stage=ready`。
-- 业务接口：注册、登录、刷新、保险库、密文 CRUD、增量/快照、设备、WebSocket 提示。
+- 业务接口：注册（邀请/开放/邮箱）、外部账号登录、刷新、保险库与密码包装信封、密文 CRUD、增量/快照、设备、WebSocket 提示。
 
 管理命令：
 

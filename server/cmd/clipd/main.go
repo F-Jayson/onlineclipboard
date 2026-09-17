@@ -17,7 +17,9 @@ import (
 
 	"onlineclipboard/server/internal/canon"
 	"onlineclipboard/server/internal/config"
+	"onlineclipboard/server/internal/extauth"
 	"onlineclipboard/server/internal/httpapi"
+	"onlineclipboard/server/internal/mailer"
 	"onlineclipboard/server/internal/migrate"
 	"onlineclipboard/server/internal/notify"
 	"onlineclipboard/server/internal/passwd"
@@ -198,5 +200,10 @@ func openStore(ctx context.Context, cfg config.Config) (*pgxpool.Pool, *store.St
 		return nil, nil, nil, err
 	}
 	hub := notify.New()
-	return pool, store.New(pool, cfg, hub), hub, nil
+	st := store.New(pool, cfg, hub)
+	st.Mailer = mailer.FromConfig(cfg)
+	if cfg.RegistrationMode == "external" {
+		st.External = extauth.New(cfg.ExternalAuthURL)
+	}
+	return pool, st, hub, nil
 }

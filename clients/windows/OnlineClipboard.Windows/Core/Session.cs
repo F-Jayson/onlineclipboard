@@ -59,6 +59,8 @@ public sealed class AppSession
             store.Set("refresh_token", CryptoV1.ProtectLocal(System.Text.Encoding.UTF8.GetBytes(RefreshToken)));
         if (Cmk != null)
             store.Set("cmk", CryptoV1.ProtectLocal(Cmk));
+        else
+            store.Delete("cmk");
         store.Set("sync_epoch", SyncEpoch);
         store.Set("cursor", Cursor);
         store.Set("capture", Capture ? "1" : "0");

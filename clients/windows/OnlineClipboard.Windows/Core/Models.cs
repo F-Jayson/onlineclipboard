@@ -11,6 +11,10 @@ public sealed class ServerInfo
     [JsonPropertyName("sync_available")] public bool SyncAvailable { get; set; }
     [JsonPropertyName("e2ee_available")] public bool E2eeAvailable { get; set; }
     [JsonPropertyName("registration_mode")] public string RegistrationMode { get; set; } = "";
+    [JsonPropertyName("email_verification")] public bool EmailVerification { get; set; }
+    [JsonPropertyName("min_password_chars")] public int MinPasswordChars { get; set; }
+    [JsonPropertyName("password_wrap")] public bool PasswordWrap { get; set; }
+    [JsonPropertyName("external_register_url")] public string ExternalRegisterUrl { get; set; } = "";
     [JsonPropertyName("max_text_bytes")] public int MaxTextBytes { get; set; }
     [JsonPropertyName("trash_retention_seconds")] public int TrashRetentionSeconds { get; set; }
 }
@@ -32,6 +36,19 @@ public sealed class VaultEnvelope
     [JsonPropertyName("vault_id")] public string VaultId { get; set; } = "";
     [JsonPropertyName("format_version")] public int FormatVersion { get; set; } = 1;
     [JsonPropertyName("key_epoch")] public int KeyEpoch { get; set; } = 1;
+    [JsonPropertyName("wrap_salt")] public string WrapSalt { get; set; } = "";
+    [JsonPropertyName("wrap_nonce")] public string WrapNonce { get; set; } = "";
+    [JsonPropertyName("wrapped_key")] public string WrappedKey { get; set; } = "";
+    [JsonPropertyName("password_wrap")] public PasswordWrap? PasswordWrap { get; set; }
+}
+
+public sealed class PasswordWrap
+{
+    [JsonPropertyName("kdf")] public string Kdf { get; set; } = "argon2id";
+    [JsonPropertyName("time")] public int Time { get; set; } = 3;
+    [JsonPropertyName("memory")] public int Memory { get; set; } = 65536;
+    [JsonPropertyName("parallelism")] public int Parallelism { get; set; } = 1;
+    [JsonPropertyName("kdf_salt")] public string KdfSalt { get; set; } = "";
     [JsonPropertyName("wrap_salt")] public string WrapSalt { get; set; } = "";
     [JsonPropertyName("wrap_nonce")] public string WrapNonce { get; set; } = "";
     [JsonPropertyName("wrapped_key")] public string WrappedKey { get; set; } = "";

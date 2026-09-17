@@ -20,7 +20,9 @@ import (
 	"onlineclipboard/server/internal/canon"
 	"onlineclipboard/server/internal/clipcrypto"
 	"onlineclipboard/server/internal/config"
+	"onlineclipboard/server/internal/extauth"
 	"onlineclipboard/server/internal/httpapi"
+	"onlineclipboard/server/internal/mailer"
 	"onlineclipboard/server/internal/migrate"
 	"onlineclipboard/server/internal/notify"
 	"onlineclipboard/server/internal/store"
@@ -61,11 +63,7 @@ func setup(t *testing.T) *harness {
 	if err := migrate.Apply(ctx, tp); err != nil {
 		t.Fatal(err)
 	}
-	cfg := config.Config{
-		HTTPAddr: "127.0.0.1:0", RegistrationMode: "invite",
-		MaxTextBytes: 65536, MaxRequestBytes: 131072, MaxItems: 10000,
-		MaxCiphertextBytes: 104857600, TrashRetentionSeconds: 604800, EventRetentionDays: 30,
-	}
+	cfg := defaultCfg()
 	hub := notify.New()
 	st := store.New(tp, cfg, hub)
 	srv := httptest.NewServer(httpapi.New(cfg, st, hub, true))
@@ -76,6 +74,25 @@ func setup(t *testing.T) *harness {
 		pool.Close()
 	})
 	return &harness{t: t, pool: tp, server: srv, st: st, cfg: cfg}
+}
+
+func defaultCfg() config.Config {
+	return config.Config{
+		HTTPAddr: "127.0.0.1:0", RegistrationMode: "invite",
+		MaxTextBytes: 65536, MaxRequestBytes: 131072, MaxItems: 10000,
+		MaxCiphertextBytes: 104857600, TrashRetentionSeconds: 604800, EventRetentionDays: 30,
+	}
+}
+
+func setupWith(t *testing.T, cfg config.Config) *harness {
+	t.Helper()
+	h := setup(t)
+	h.cfg = cfg
+	h.st.Cfg = cfg
+	h.server.Close()
+	h.server = httptest.NewServer(httpapi.New(cfg, h.st, notify.New(), true))
+	t.Cleanup(h.server.Close)
+	return h
 }
 
 func replaceDB(url, db string) string {
@@ -464,4 +481,247 @@ func TestDeviceRevokeBlocksAccess(t *testing.T) {
 		t.Fatalf("revoked session %d", res.StatusCode)
 	}
 	res.Body.Close()
+}
+
+func TestEmailRegisterAndLogin(t *testing.T) {
+	cfg := defaultCfg()
+	cfg.RegistrationMode = "email"
+	cfg.EmailBackend = "log"
+	h := setupWith(t, cfg)
+	mail := &mailer.LogSender{}
+	h.st.Mailer = mail
+
+	res := h.post("/api/v1/auth/email-code", map[string]any{"email": "carol@example.com"}, "", nil)
+	if res.StatusCode != 204 {
+		b, _ := io.ReadAll(res.Body)
+		res.Body.Close()
+		t.Fatalf("email-code %d %s", res.StatusCode, b)
+	}
+	res.Body.Close()
+	code := mail.Code("carol@example.com")
+	if code == "" {
+		t.Fatal("missing email code")
+	}
+	device := uuid.NewString()
+	res = h.post("/api/v1/auth/register", map[string]any{
+		"username": "carol", "password": "correct-horse-battery",
+		"email": "carol@example.com", "email_code": code,
+		"device": map[string]string{"id": device, "name": "dev", "platform": "windows"},
+	}, "", nil)
+	if res.StatusCode != 201 {
+		b, _ := io.ReadAll(res.Body)
+		res.Body.Close()
+		t.Fatalf("register %d %s", res.StatusCode, b)
+	}
+	res.Body.Close()
+
+	res = h.post("/api/v1/auth/login", map[string]any{
+		"username": "carol@example.com", "password": "correct-horse-battery",
+		"device": map[string]string{"id": device, "name": "dev", "platform": "windows"},
+	}, "", nil)
+	if res.StatusCode != 200 {
+		b, _ := io.ReadAll(res.Body)
+		res.Body.Close()
+		t.Fatalf("email login %d %s", res.StatusCode, b)
+	}
+	res.Body.Close()
+
+	infoRes := h.do(http.MethodGet, "/api/v1/server-info", nil, "", nil)
+	info := decode[map[string]any](t, infoRes)
+	if info["registration_mode"] != "email" || info["email_verification"] != true || info["password_wrap"] != true {
+		t.Fatalf("server-info %v", info)
+	}
+}
+
+func TestExternalLogin(t *testing.T) {
+	blog := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var in map[string]string
+		_ = json.NewDecoder(r.Body).Decode(&in)
+		if in["password"] != "blog-secret" {
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"user": map[string]any{"id": 7, "account": "jayson", "email": "j@example.com", "is_active": true},
+		})
+	}))
+	t.Cleanup(blog.Close)
+	cfg := defaultCfg()
+	cfg.RegistrationMode = "external"
+	cfg.ExternalAuthURL = blog.URL
+	cfg.ExternalRegisterURL = "https://blog.example.com"
+	h := setupWith(t, cfg)
+	h.st.External = extauth.New(blog.URL)
+
+	res := h.post("/api/v1/auth/register", map[string]any{
+		"username": "jayson", "password": "correct-horse-battery",
+		"device": map[string]string{"id": uuid.NewString(), "name": "dev", "platform": "windows"},
+	}, "", nil)
+	if res.StatusCode != 403 {
+		t.Fatalf("external register %d", res.StatusCode)
+	}
+	res.Body.Close()
+
+	device := uuid.NewString()
+	res = h.post("/api/v1/auth/login", map[string]any{
+		"username": "jayson", "password": "blog-secret",
+		"device": map[string]string{"id": device, "name": "dev", "platform": "windows"},
+	}, "", nil)
+	if res.StatusCode != 200 {
+		b, _ := io.ReadAll(res.Body)
+		res.Body.Close()
+		t.Fatalf("external login %d %s", res.StatusCode, b)
+	}
+	first := decode[authJSON](t, res)
+	if first.UserID == "" {
+		t.Fatal("missing user")
+	}
+	res = h.post("/api/v1/auth/login", map[string]any{
+		"username": "jayson", "password": "blog-secret",
+		"device": map[string]string{"id": device, "name": "dev", "platform": "windows"},
+	}, "", nil)
+	if res.StatusCode != 200 {
+		t.Fatalf("second login %d", res.StatusCode)
+	}
+	second := decode[authJSON](t, res)
+	if second.UserID != first.UserID {
+		t.Fatalf("jit user %s %s", first.UserID, second.UserID)
+	}
+	infoRes := h.do(http.MethodGet, "/api/v1/server-info", nil, "", nil)
+	info := decode[map[string]any](t, infoRes)
+	if info["registration_mode"] != "external" || info["external_register_url"] != "https://blog.example.com" {
+		t.Fatalf("server-info %v", info)
+	}
+}
+
+func TestExternalKeepsLocalUser(t *testing.T) {
+	blog := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusUnauthorized)
+	}))
+	t.Cleanup(blog.Close)
+	h := setup(t)
+	device := uuid.NewString()
+	auth := h.register("alice", device)
+	h.st.Cfg.RegistrationMode = "external"
+	h.st.Cfg.ExternalAuthURL = blog.URL
+	h.st.External = extauth.New(blog.URL)
+	h.server.Close()
+	h.server = httptest.NewServer(httpapi.New(h.st.Cfg, h.st, notify.New(), true))
+	t.Cleanup(h.server.Close)
+
+	res := h.post("/api/v1/auth/login", map[string]any{
+		"username": "alice", "password": "correct-horse-battery",
+		"device": map[string]string{"id": device, "name": "dev", "platform": "windows"},
+	}, "", nil)
+	if res.StatusCode != 200 {
+		b, _ := io.ReadAll(res.Body)
+		res.Body.Close()
+		t.Fatalf("local fallback %d %s", res.StatusCode, b)
+	}
+	got := decode[authJSON](t, res)
+	if got.UserID != auth.UserID {
+		t.Fatalf("user %s %s", got.UserID, auth.UserID)
+	}
+}
+
+func TestPasswordWrapRoundTrip(t *testing.T) {
+	h := setup(t)
+	device := uuid.NewString()
+	auth := h.register("alice", device)
+	cmk := make([]byte, 32)
+	rk := make([]byte, 32)
+	salt := make([]byte, 32)
+	nonce := make([]byte, 12)
+	kdfSalt := make([]byte, 16)
+	pSalt := make([]byte, 32)
+	pNonce := make([]byte, 12)
+	_, _ = rand.Read(cmk)
+	_, _ = rand.Read(rk)
+	_, _ = rand.Read(salt)
+	_, _ = rand.Read(nonce)
+	_, _ = rand.Read(kdfSalt)
+	_, _ = rand.Read(pSalt)
+	_, _ = rand.Read(pNonce)
+	vaultID := uuid.NewString()
+	wrapped, err := clipcrypto.WrapCMK(rk, salt, nonce, cmk, auth.UserID, vaultID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	password := "correct-horse-battery"
+	pWrapped, err := clipcrypto.WrapCMKWithPassword(password, kdfSalt, pSalt, pNonce, cmk, auth.UserID, vaultID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	res := h.do(http.MethodPut, "/api/v1/vault", map[string]any{
+		"vault_id": vaultID, "format_version": 1, "key_epoch": 1,
+		"wrap_salt": canon.Encode(salt), "wrap_nonce": canon.Encode(nonce), "wrapped_key": canon.Encode(wrapped),
+		"password_wrap": map[string]any{
+			"kdf": "argon2id", "time": 3, "memory": 65536, "parallelism": 1,
+			"kdf_salt": canon.Encode(kdfSalt), "wrap_salt": canon.Encode(pSalt),
+			"wrap_nonce": canon.Encode(pNonce), "wrapped_key": canon.Encode(pWrapped),
+		},
+	}, auth.AccessToken, map[string]string{"If-None-Match": "*"})
+	if res.StatusCode != 201 {
+		b, _ := io.ReadAll(res.Body)
+		res.Body.Close()
+		t.Fatalf("vault %d %s", res.StatusCode, b)
+	}
+	res.Body.Close()
+	res = h.do(http.MethodGet, "/api/v1/vault", nil, auth.AccessToken, nil)
+	if res.StatusCode != 200 {
+		t.Fatalf("get vault %d", res.StatusCode)
+	}
+	got := decode[map[string]any](t, res)
+	wrap, _ := got["password_wrap"].(map[string]any)
+	if wrap == nil {
+		t.Fatalf("missing password wrap %v", got)
+	}
+	opened, err := clipcrypto.UnwrapCMKWithPassword(
+		password,
+		mustB64(t, wrap["kdf_salt"].(string)),
+		mustB64(t, wrap["wrap_salt"].(string)),
+		mustB64(t, wrap["wrap_nonce"].(string)),
+		mustB64(t, wrap["wrapped_key"].(string)),
+		auth.UserID, vaultID, 3, 65536, 1)
+	if err != nil || string(opened) != string(cmk) {
+		t.Fatalf("unwrap %v", err)
+	}
+}
+
+func TestPasswordWrapPutLater(t *testing.T) {
+	h := setup(t)
+	auth := h.register("alice", uuid.NewString())
+	vaultID := h.initVault(auth)
+	cmk := make([]byte, 32)
+	kdfSalt := make([]byte, 16)
+	pSalt := make([]byte, 32)
+	pNonce := make([]byte, 12)
+	_, _ = rand.Read(cmk)
+	_, _ = rand.Read(kdfSalt)
+	_, _ = rand.Read(pSalt)
+	_, _ = rand.Read(pNonce)
+	pWrapped, err := clipcrypto.WrapCMKWithPassword("correct-horse-battery", kdfSalt, pSalt, pNonce, cmk, auth.UserID, vaultID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	res := h.do(http.MethodPut, "/api/v1/vault/password-wrap", map[string]any{
+		"kdf": "argon2id", "time": 3, "memory": 65536, "parallelism": 1,
+		"kdf_salt": canon.Encode(kdfSalt), "wrap_salt": canon.Encode(pSalt),
+		"wrap_nonce": canon.Encode(pNonce), "wrapped_key": canon.Encode(pWrapped),
+	}, auth.AccessToken, nil)
+	if res.StatusCode != 204 {
+		b, _ := io.ReadAll(res.Body)
+		res.Body.Close()
+		t.Fatalf("put wrap %d %s", res.StatusCode, b)
+	}
+	res.Body.Close()
+}
+
+func mustB64(t *testing.T, v string) []byte {
+	t.Helper()
+	raw, err := canon.Decode(v, -1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return raw
 }

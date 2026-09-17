@@ -19,11 +19,20 @@ class ApiClient(var origin: String, private var customCaPem: String? = null) {
 
     fun serverInfo(): JSONObject = get("/api/v1/server-info")
 
-    fun register(username: String, password: String, invite: String, deviceId: String, name: String): JSONObject {
+    fun register(
+        username: String, password: String, invite: String, deviceId: String, name: String,
+        email: String = "", emailCode: String = ""
+    ): JSONObject {
         val body = JSONObject()
             .put("username", username).put("password", password).put("invite_token", invite)
             .put("device", JSONObject().put("id", deviceId).put("name", name).put("platform", "android"))
+        if (email.isNotEmpty()) body.put("email", email)
+        if (emailCode.isNotEmpty()) body.put("email_code", emailCode)
         return send("POST", "/api/v1/auth/register", body, 201)
+    }
+
+    fun requestEmailCode(email: String) {
+        send("POST", "/api/v1/auth/email-code", JSONObject().put("email", email), 204)
     }
 
     fun login(username: String, password: String, deviceId: String, name: String): JSONObject {
@@ -40,6 +49,10 @@ class ApiClient(var origin: String, private var customCaPem: String? = null) {
         send("PUT", "/api/v1/vault", env, 201, mapOf("If-None-Match" to "*"))
 
     fun getVault(): JSONObject = get("/api/v1/vault")
+
+    fun putPasswordWrap(wrap: JSONObject) {
+        send("PUT", "/api/v1/vault/password-wrap", wrap, 204)
+    }
 
     fun createClip(env: JSONObject): JSONObject = send("POST", "/api/v1/clips", env, 0)
 

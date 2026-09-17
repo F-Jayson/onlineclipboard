@@ -15,6 +15,7 @@ import (
 var (
 	uuidRE     = regexp.MustCompile(`^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`)
 	usernameRE = regexp.MustCompile(`^[a-z0-9_]{3,32}$`)
+	emailRE    = regexp.MustCompile(`^[a-z0-9._%+\-]+@[a-z0-9.\-]+\.[a-z]{2,}$`)
 	seqRE      = regexp.MustCompile(`^(0|[1-9][0-9]*)$`)
 	b64urlRE   = regexp.MustCompile(`^[A-Za-z0-9_-]+$`)
 )
@@ -71,6 +72,22 @@ func Username(value string) error {
 	return nil
 }
 
+func Email(value string) (string, error) {
+	v := strings.ToLower(strings.TrimSpace(value))
+	if !utf8.ValidString(v) || len(v) < 5 || len(v) > 190 || !emailRE.MatchString(v) {
+		return "", fmt.Errorf("email is invalid")
+	}
+	return v, nil
+}
+
+func LoginIdentifier(value string) error {
+	v := strings.TrimSpace(value)
+	if !utf8.ValidString(v) || v == "" || utf8.RuneCountInString(v) > 190 || len(v) > 190 {
+		return fmt.Errorf("login identifier is invalid")
+	}
+	return nil
+}
+
 func Password(value string) error {
 	if !utf8.ValidString(value) {
 		return fmt.Errorf("password is not valid utf-8")
@@ -78,6 +95,29 @@ func Password(value string) error {
 	n := utf8.RuneCountInString(value)
 	if n < 12 || n > 128 || len(value) > 512 {
 		return fmt.Errorf("password must be 12-128 characters and at most 512 bytes")
+	}
+	return nil
+}
+
+func LoginSecret(value string) error {
+	if !utf8.ValidString(value) {
+		return fmt.Errorf("password is not valid utf-8")
+	}
+	n := utf8.RuneCountInString(value)
+	if n < 1 || n > 128 || len(value) > 512 {
+		return fmt.Errorf("password is invalid")
+	}
+	return nil
+}
+
+func EmailCode(value string) error {
+	if len(value) != 6 {
+		return fmt.Errorf("email code must be 6 digits")
+	}
+	for _, c := range value {
+		if c < '0' || c > '9' {
+			return fmt.Errorf("email code must be 6 digits")
+		}
 	}
 	return nil
 }
@@ -171,4 +211,9 @@ func OperationRequestHash(kind, clipID string, expectedVersion int) []byte {
 		[]byte(clipID),
 		[]byte(strconv.Itoa(expectedVersion)),
 	)
+}
+
+func EmailCodeHash(email, purpose, code string) []byte {
+	sum := sha256.Sum256([]byte(purpose + "|" + email + "|" + code))
+	return sum[:]
 }

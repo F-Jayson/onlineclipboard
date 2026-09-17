@@ -1,23 +1,25 @@
 # 实现状态
 
-日期：2026-09-15。对照 [开发计划](09-development-plan.md)。
+日期：2026-09-17。对照 [开发计划](09-development-plan.md)。
 
 ## 已完成
 
 - 服务端 Go + PostgreSQL：认证、保险库 CAS、密文条目、增量/快照、回收站 168 小时、到期清理作业、设备撤销、刷新令牌轮换与重用检测、WebSocket 变化提示。
+- 登录密码包装信封：客户端 Argon2id + HKDF 包装 CMK，服务端只存密文；`PUT /vault/password-wrap` 可补写。恢复密钥仍作备用。
+- 注册模式：`invite` / `open` / `email`（SMTP 或 log 验证码）/ `external`（HTTP 校验外部站点账号并 JIT 开通剪贴板用户）。
 - 启动自动迁移；`clipd migrate`、`clipd admin invite|reset-password|rotate-sync-epoch`。
-- Windows WPF：服务器地址、注册/登录、保险库初始化/恢复密钥解锁、剪贴板监听与防循环写入、历史搜索、删除/恢复/永久删除、设备撤销、离线 outbox。
-- Android 普通模式：前台焦点读取、写入、分享 `ACTION_SEND`、历史/回收站/设备、能力检查入口。未实现输入法增强。
-- 加密 v1：Go / .NET 对照 `contracts/crypto-v1-vectors.json` 通过；Android 使用同一 HKDF-SHA256 + AES-256-GCM 布局。
-- Compose 模板：postgres + api 默认启动；`https` profile 启动 Caddy。
+- Windows WPF：服务器地址、按 server-info 切换注册 UI、登录后密码自动解锁、剪贴板监听与防循环写入、历史搜索、删除/恢复/永久删除、设备撤销、离线 outbox。
+- Android 普通模式：前台焦点读取、写入、分享 `ACTION_SEND`、历史/回收站/设备、能力检查入口、密码包装解锁。未实现输入法增强。
+- 加密 v1：Go / .NET 对照 `contracts/crypto-v1-vectors.json`（含 password_wrap）；Android 使用同一 HKDF-SHA256 + AES-256-GCM 与 Argon2id 布局。
+- Compose 模板：postgres + api 默认启动；`https` profile 启动 Caddy；支持 external/SMTP 环境变量。
 
 ## 实际验证结果
 
 | 项目 | 结果 |
 | --- | --- |
-| `go test ./...`（真实 PostgreSQL 16，`127.0.0.1:55432`） | 通过：健康/就绪、注册、保险库 CAS 412、创建幂等 201/200、回收站到期禁止恢复、清理后 410、刷新重用撤销、游标过期、账号隔离、设备撤销 |
+| `go test ./...`（真实 PostgreSQL 16，`127.0.0.1:5432`） | 通过：含 email 注册、external 登录/本地回退、password wrap 初始化与补写 |
 | 本机 `clipd` `127.0.0.1:18080` HTTP 冒烟 | 通过：register/vault/create/replay/trash/snapshot/changes；另一账号 404 |
-| Windows `dotnet test` + `dotnet build -c Release` | 通过（向量 2 项 + 可执行文件） |
+| Windows `dotnet test` + `dotnet build -c Release` | 通过（向量 3 项，含 password wrap） |
 | Android `:app:assembleDebug` | 通过，APK 位于 `clients/android/app/build/outputs/apk/debug/app-debug.apk` |
 | 跨端加密向量 | Go 与 Windows 已跑同一组向量；Android 未在 JVM/真机跑向量（实现与向量一致，**未作为仪器测试通过**） |
 | 双端真实剪贴板互相同步 | **未验证**：无已连接的 Android 真机/模拟器会话完成复制往返 |
